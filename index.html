@@ -62,9 +62,9 @@
 
       const firebaseConfig = injectedConfig || manualConfig;
 
-      // (FIX) Sanitize the appId for Realtime Database
       // (FIX) ត្រូវតែប្រើ projectId ជានិច្ច ដើម្បីឱ្យ Realtime ដំណើរការឆ្លងឧបករណ៍
       const rawAppId = firebaseConfig.projectId || 'default-app-id';
+      
       // Firebase Realtime Database paths can't contain '.', '#', '$', '[', or ']'
       // We must sanitize the appId by replacing invalid characters.
       const appId = rawAppId.replace(/[.#$\[\]]/g, '_');
@@ -170,7 +170,7 @@
           );
         };
         
-        // --- (NEW) Function សម្រាប់ Format លេខ ---
+        // --- Function សម្រាប់ Format លេខ ---
         const formatDisplayAmount = (amount) => {
           if (!amount) return '';
           const num = Number(amount);
@@ -178,7 +178,7 @@
           return num.toLocaleString('en-US'); // ប្រើ en-US សម្រាប់សញ្ញាក្បៀស
         };
         
-        // --- (NEW) Function សម្រាប់ xử lý input លេខ ---
+        // --- Function សម្រាប់ xử lý input លេខ ---
         const handleAmountChange = (id, value) => {
           const cleanValue = value.replace(/,/g, ''); // លុបសញ្ញាក្បៀសចេញ
           
@@ -229,7 +229,7 @@
             
             {/* (FIX) បានប្តូរពី Table ទៅជា List សម្រាប់ Mobile */}
             <div className="">
-              {/* (FIX) HEADERS: លាក់នៅលើ Mobile, បង្ហាញនៅលើ Desktop */}
+              {/* HEADERS: លាក់នៅលើ Mobile, បង្ហាញនៅលើ Desktop */}
               <div className="hidden sm:table w-full">
                 <div className="sm:table-header-group">
                   <div className="sm:table-row border-b-2 border-gray-300 bg-gray-100">
@@ -241,16 +241,18 @@
                 </div>
               </div>
 
-              {/* (FIX) BODY: បង្ហាញជា Card នៅលើ Mobile, ជា Table Row នៅលើ Desktop */}
+              {/* BODY: បង្ហាញជា Card នៅលើ Mobile, ជា Table Row នៅលើ Desktop */}
               <div className="sm:table w-full sm:border-collapse">
                 <div className="sm:table-row-group">
                   {rows.map(row => (
                     // (FIX) រាល់ Row គឺជា Card នៅលើ Mobile (block), គឺជា Table Row នៅលើ Desktop
-                    <div key={row.id} className="block sm:table-row border shadow-md sm:shadow-none rounded-lg sm:rounded-none overflow-hidden mb-4 sm:mb-0 sm:border-b">
+                    // (FIX) កាត់បន្ថយ Padding/Margin សម្រាប់ Mobile (p-2, mb-2)
+                    <div key={row.id} className="block sm:table-row border shadow-md sm:shadow-none rounded-lg sm:rounded-none overflow-hidden mb-2 sm:mb-0 sm:border-b">
                       
                       {/* ឈ្មោះចំណាយ (Dropdown) */}
                       {/* (FIX) រាល់ Cell គឺជា Block នៅលើ Mobile, Table Cell នៅលើ Desktop */}
-                      <div className="p-3 sm:p-2 block sm:table-cell border-b sm:border-none">
+                      {/* (FIX) កាត់បន្ថយ Padding (p-2) */}
+                      <div className="p-2 sm:p-2 block sm:table-cell border-b sm:border-none">
                         <label className="text-sm font-medium text-gray-600 sm:hidden">ឈ្មោះចំណាយ</label>
                         <select
                           value={row.expenseName}
@@ -266,8 +268,8 @@
                         </select>
                       </div>
                       
-                      {/* (FIX) កែប្រែ Input ចំនួនទឹកប្រាក់ */}
-                      <div className="p-3 sm:p-2 block sm:table-cell border-b sm:border-none">
+                      {/* កែប្រែ Input ចំនួនទឹកប្រាក់ */}
+                      <div className="p-2 sm:p-2 block sm:table-cell border-b sm:border-none">
                         <label className="text-sm font-medium text-gray-600 sm:hidden">ចំនួនទឹកប្រាក់ (៛)</label>
                         <input
                           type="tel" 
@@ -280,7 +282,7 @@
                       </div>
 
                       {/* កាលបរិច្ឆេទ */}
-                      <div className="p-3 sm:p-2 block sm:table-cell border-b sm:border-none">
+                      <div className="p-2 sm:p-2 block sm:table-cell border-b sm:border-none">
                         <label className="text-sm font-medium text-gray-600 sm:hidden">កាលបរិច្ឆេទ</label>
                         <input
                           type="date"
@@ -291,11 +293,12 @@
                       </div>
                       
                       {/* ប៊ូតុងលុបជួរ */}
-                      <div className="p-3 sm:p-2 block sm:table-cell text-right sm:text-center">
-                        {/* (FIX) ប្តូរ Button ឱ្យពេញទទឹងនៅលើ Mobile */}
+                      <div className="p-2 sm:p-2 block sm:table-cell text-right sm:text-center">
+                        {/* ប្តូរ Button ឱ្យពេញទទឹងនៅលើ Mobile */}
+                        {/* (FIX) កាត់បន្ថយ Padding (py-1.5) */}
                         <button
                           onClick={() => handleDeleteRow(row.id)}
-                          className="px-3 py-2 sm:py-1 bg-red-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-600 w-full sm:w-auto"
+                          className="px-3 py-1.5 sm:py-1 bg-red-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-600 w-full sm:w-auto"
                         >
                           លុបជួរនេះ
                         </button>
@@ -363,7 +366,7 @@
       }
       
       
-      // --- (NEW) Component សម្រាប់ Filter ---
+      // --- Component សម្រាប់ Filter ---
       function ExpenseFilter({ filterType, setFilterType, filterValue, setFilterValue }) {
         
         // យកខែ/ឆ្នាំ បច្ចុប្បន្នសម្រាប់ Default
@@ -476,7 +479,7 @@
       }
 
 
-      // --- (NEW) Component សម្រាប់បង្ហាញបញ្ជីចំណាយ (បានកែប្រែ) ---
+      // --- Component សម្រាប់បង្ហាញបញ្ជីចំណាយ (បានកែប្រែ) ---
       function ExpenseList({ expenses, deleteExpense, loading, filterType, filterValue }) {
         
         // (NEW) ត្រង (Filter) ទិន្នន័យ
@@ -529,12 +532,15 @@
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredExpenses.map((expense) => (
-                      <ExpenseRow
-                        key={expense.id}
-                        expense={expense}
-                        deleteExpense={deleteExpense}
-                      />
+                    {/* (FIX) តម្រៀបទិន្នន័យដែលបាន Filter មុនពេលបង្ហាញ (ថ្មី -> ចាស់) */}
+                    {filteredExpenses
+                      .sort((a, b) => new Date(b.date) - new Date(a.date))
+                      .map((expense) => (
+                        <ExpenseRow
+                          key={expense.id}
+                          expense={expense}
+                          deleteExpense={deleteExpense}
+                        />
                     ))}
                   </tbody>
                 </table>
@@ -544,7 +550,7 @@
         );
       }
 
-      // --- (NEW) Component សម្រាប់បង្ហាញការសរុប (បានកែប្រែ) ---
+      // --- Component សម្រាប់បង្ហាញការសរុប (បានកែប្រែ) ---
       function ExpenseSummary({ expenses, filterType, filterValue, loading }) {
         
         // (NEW) ត្រង (Filter) ទិន្នន័យ
@@ -656,7 +662,7 @@
         );
       }
       
-      // --- (NEW) Component សម្រាប់ Mobile Bottom Navigation Bar ---
+      // --- Component សម្រាប់ Mobile Bottom Navigation Bar ---
       function MobileNavbar({ currentPage, setCurrentPage }) {
         const navItems = [
           { id: 'dashboard', label: 'ទំព័រដើម', icon: (
