@@ -326,10 +326,8 @@
                         />
                       </div>
                       
-                      {/* ប៊ូតុងលុបជួរ */}
-                      <div className="p-2 sm:p-2 block sm:table-cell text-right sm:text-center">
-                        {/* ប្តូរ Button ឱ្យពេញទទឹងនៅលើ Mobile */}
-                        {/* (FIX) កាត់បន្ថយ Padding (py-1.5) */}
+                      {/* (FIX) ប៊ូតុងលុបជួរ: លាក់នៅលើ Mobile (hidden), បង្ហាញនៅលើ Desktop (sm:table-cell) */}
+                      <div className="p-2 sm:p-2 hidden sm:table-cell text-right sm:text-center">
                         <button
                           onClick={() => handleDeleteRow(row.id)}
                           className="px-3 py-1.5 sm:py-1 bg-red-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-600 w-full sm:w-auto"
@@ -344,12 +342,15 @@
             </div>
             
             <div className="flex flex-col sm:flex-row justify-between items-center mt-4 gap-2">
+              {/* (FIX) ប៊ូតុងបន្ថែមជួរ: លាក់នៅលើ Mobile (hidden), បង្ហាញនៅលើ Desktop (sm:flex) */}
               <button
                 onClick={handleAddRow}
-                className="w-full sm:w-auto p-3 bg-green-600 text-white font-semibold rounded-md shadow-md hover:bg-green-700"
+                className="w-full sm:w-auto p-3 bg-green-600 text-white font-semibold rounded-md shadow-md hover:bg-green-700 hidden sm:flex"
               >
                 + បន្ថែមជួរថ្មី
               </button>
+              
+              {/* (FIX) ប៊ូតុងរក្សាទុក: ប្តូរអក្សរដោយផ្អែកលើទំហំអេក្រង់ */}
               <button
                 onClick={handleSubmitAll}
                 disabled={loading || rows.length === 0 || expenseTemplates.length === 0}
@@ -359,7 +360,12 @@
                     : 'bg-blue-600 hover:bg-blue-700'
                 }`}
               >
-                {loading ? 'កំពុងរក្សាទុក...' : (expenseTemplates.length === 0 ? 'ត្រូវបន្ថែមឈ្មោះចំណាយសិន' : 'រក្សាទុកទាំងអស់')}
+                {loading ? 'កំពុងរក្សាទុក...' : (expenseTemplates.length === 0 ? 'ត្រូវបន្ថែមឈ្មោះចំណាយសិន' : (
+                  <>
+                    <span className="hidden sm:inline">រក្សាទុកទាំងអស់</span>
+                    <span className="inline sm:hidden">រក្សាទុក</span>
+                  </>
+                ))}
               </button>
             </div>
           </div>
