@@ -38,6 +38,21 @@
   <script type="text/babel">
 
       const { useState, useEffect, useMemo } = React;
+      
+      // --- (NEW) Global Helper Functions សម្រាប់ Format លេខ ---
+      // ប្រើ en-US សម្រាប់សញ្ញាក្បៀស (,)
+      const formatDisplayAmount = (amount) => {
+        if (!amount) return '';
+        const num = Number(amount);
+        if (isNaN(num)) return '';
+        return num.toLocaleString('en-US');
+      };
+      
+      const parseAmount = (value) => {
+        if (typeof value !== 'string') return value;
+        return value.replace(/,/g, ''); // លុបសញ្ញាក្បៀសចេញ
+      };
+      // --------------------------------------------------
 
       // --- ត្រូវប្រាកដថាអថេរទាំងនេះមាន ---
       // (Canvas នឹងផ្តល់អថេរទាំងនេះដោយស្វ័យប្រវត្តិ)
@@ -147,7 +162,32 @@
           date: defaultDate,
         });
 
-        const [rows, setRows] = useState([createNewRow()]);
+        // (NEW) កំណត់ Key សម្រាប់ localStorage
+        const DRAFT_KEY = `expense_drafts_${appId}`;
+
+        // (FIX) ប្រើ Lazy Initializer សម្រាប់ useState ដើម្បីទាញទិន្នន័យពី localStorage ពេលចាប់ផ្តើម
+        const [rows, setRows] = useState(() => {
+          try {
+            const savedDrafts = localStorage.getItem(DRAFT_KEY);
+            // ប្រសិនបើមានទិន្នន័យចាស់, ប្រើវា
+            if (savedDrafts && JSON.parse(savedDrafts).length > 0) {
+              return JSON.parse(savedDrafts);
+            }
+          } catch (e) {
+            console.error("Failed to load drafts from localStorage:", e);
+          }
+          // បើមិនមាន, ចាប់ផ្តើមជាមួយជួរថ្មីមួយ
+          return [createNewRow()];
+        });
+
+        // (NEW) បន្ថែម useEffect នេះ ដើម្បីរក្សាទុក 'rows' ទៅ localStorage រាល់ពេលវាផ្លាស់ប្តូរ
+        useEffect(() => {
+          try {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(rows));
+          } catch (e) {
+            console.error("Failed to save drafts to localStorage:", e);
+          }
+        }, [rows, DRAFT_KEY]); // Dependency array
 
         // Update default expenseName in rows when templates load
         useEffect(() => {
@@ -155,12 +195,13 @@
             setRows(prevRows => 
               prevRows.map(row => ({
                 ...row,
+                // (FIX) រក្សា expenseName ដែលមានស្រាប់, បើមិនមានទេ ប្រើ default
                 expenseName: row.expenseName || expenseTemplates[0].name
               }))
             );
           }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [expenseTemplates]);
+        }, [expenseTemplates]); // មិនបាច់បន្ថែម createNewRow ទេ
 
         const handleUpdateRow = (id, field, value) => {
           setRows(prevRows =>
@@ -170,17 +211,9 @@
           );
         };
         
-        // --- Function សម្រាប់ Format លេខ ---
-        const formatDisplayAmount = (amount) => {
-          if (!amount) return '';
-          const num = Number(amount);
-          if (isNaN(num)) return '';
-          return num.toLocaleString('en-US'); // ប្រើ en-US សម្រាប់សញ្ញាក្បៀស
-        };
-        
         // --- Function សម្រាប់ xử lý input លេខ ---
         const handleAmountChange = (id, value) => {
-          const cleanValue = value.replace(/,/g, ''); // លុបសញ្ញាក្បៀសចេញ
+          const cleanValue = parseAmount(value); // ប្រើ Global function
           
           // អនុញ្ញាតតែលេខ ឬ string ទទេ
           if (isNaN(cleanValue) && cleanValue !== '') {
@@ -216,6 +249,7 @@
               })
             );
             console.log(`Successfully added ${validRows.length} expenses.`);
+            // (FIX) កូដនេះនឹង clear localStorage ដោយស្វ័យប្រវត្តិ ព្រោះ useEffect [rows] នឹងដំណើរការ
             setRows([createNewRow()]); // Reset តារាង
           } catch (error) {
             console.error("Error saving expenses: ", error);
@@ -329,39 +363,6 @@
               </button>
             </div>
           </div>
-        );
-      }
-
-
-      // --- Component សម្រាប់បង្ហាញជួរទិន្នន័យ (Expense Row) មួយក្នុងតារាង "បង្ហាញ" ---
-      function ExpenseRow({ expense, deleteExpense }) {
-        // ធ្វើ Format កាលបរិច្ឆេទ
-        const formattedDate = new Date(expense.date).toLocaleDateString('km-KH', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          timeZone: 'UTC' // ធានាថាកាលបរិច្ឆេទមិនផ្លាស់ប្តូរដោយសារ Timezone
-        });
-        
-        // ធ្វើ Format លុយរៀល
-        // (FIX) ត្រូវប្រាកដថា expense.amount គឺជាលេខ
-        const amountValue = typeof expense.amount === 'number' ? expense.amount : parseFloat(expense.amount);
-        const formattedAmount = isNaN(amountValue) ? 'N/A' : amountValue.toLocaleString('km-KH');
-
-        return (
-          <tr className="border-b border-gray-200 hover:bg-gray-50">
-            <td className="p-3 py-4 text-gray-900">{expense.expenseName}</td>
-            <td className="p-3 py-4 text-gray-600">{formattedDate}</td>
-            <td className="p-3 py-4 text-red-600 font-bold">{formattedAmount} ៛</td>
-            <td className="p-3 py-4 text-center">
-              <button
-                onClick={() => deleteExpense(expense.id)}
-                className="px-3 py-1 bg-red-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-600 transition-colors"
-              >
-                លុប
-              </button>
-            </td>
-          </tr>
         );
       }
       
@@ -478,16 +479,249 @@
         );
       }
 
+      // --- (NEW) Component សម្រាប់កែសម្រួលទិន្នន័យ (Desktop: Table Row) ---
+      function EditableExpenseRow({ expense, deleteExpense, updateExpense, expenseTemplates }) {
+        const [isEditing, setIsEditing] = useState(false);
+        const [editData, setEditData] = useState({ ...expense });
 
-      // --- Component សម្រាប់បង្ហាញបញ្ជីចំណាយ (បានកែប្រែ) ---
-      function ExpenseList({ expenses, deleteExpense, loading, filterType, filterValue }) {
+        const handleAmountChange = (value) => {
+          const cleanValue = parseAmount(value);
+          if (isNaN(cleanValue) && cleanValue !== '') return;
+          setEditData(prev => ({ ...prev, amount: cleanValue }));
+        };
+
+        const handleSave = async () => {
+          const dataToUpdate = {
+            expenseName: editData.expenseName,
+            date: editData.date,
+            amount: parseFloat(editData.amount)
+          };
+          await updateExpense(expense.id, dataToUpdate);
+          setIsEditing(false);
+        };
+
+        const handleCancel = () => {
+          setIsEditing(false);
+          setEditData({ ...expense }); // Reset to original data
+        };
+
+        // ធ្វើ Format កាលបរិច្ឆេទ
+        const formattedDate = new Date(expense.date).toLocaleDateString('km-KH', {
+          year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
+        });
+        
+        // ធ្វើ Format លុយរៀល
+        const amountValue = typeof expense.amount === 'number' ? expense.amount : parseFloat(expense.amount);
+        const formattedAmount = isNaN(amountValue) ? 'N/A' : amountValue.toLocaleString('km-KH');
+
+        if (isEditing) {
+          return (
+            <tr className="border-b border-gray-200 bg-blue-50">
+              {/* Edit: ឈ្មោះចំណាយ */}
+              <td className="p-3 py-2">
+                <select
+                  value={editData.expenseName}
+                  onChange={(e) => setEditData(prev => ({ ...prev, expenseName: e.target.value }))}
+                  className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white"
+                >
+                  {expenseTemplates.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                </select>
+              </td>
+              {/* Edit: កាលបរិច្ឆេទ */}
+              <td className="p-3 py-2">
+                <input
+                  type="date"
+                  value={editData.date}
+                  onChange={(e) => setEditData(prev => ({ ...prev, date: e.target.value }))}
+                  className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                />
+              </td>
+              {/* Edit: ចំនួនទឹកប្រាក់ */}
+              <td className="p-3 py-2">
+                <input
+                  type="tel"
+                  inputMode="decimal"
+                  value={formatDisplayAmount(editData.amount)}
+                  onChange={(e) => handleAmountChange(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                />
+              </td>
+              {/* Edit: ប៊ូតុង */}
+              <td className="p-3 py-2 text-center">
+                <div className="flex justify-center gap-2">
+                  <button
+                    onClick={handleSave}
+                    className="px-3 py-1 bg-green-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-green-700"
+                  >
+                    រក្សាទុក
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    className="px-3 py-1 bg-gray-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-gray-600"
+                  >
+                    បោះបង់
+                  </button>
+                </div>
+              </td>
+            </tr>
+          );
+        }
+
+        // ពេលមិនមែន Edit (Default View)
+        return (
+          <tr className="border-b border-gray-200 hover:bg-gray-50">
+            <td className="p-3 py-4 text-gray-900">{expense.expenseName}</td>
+            <td className="p-3 py-4 text-gray-600">{formattedDate}</td>
+            <td className="p-3 py-4 text-red-600 font-bold">{formattedAmount} ៛</td>
+            <td className="p-3 py-4 text-center">
+              <div className="flex justify-center gap-2">
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="px-3 py-1 bg-yellow-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-yellow-600"
+                >
+                  កែសម្រួល
+                </button>
+                <button
+                  onClick={() => deleteExpense(expense.id)}
+                  className="px-3 py-1 bg-red-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-600"
+                >
+                  លុប
+                </button>
+              </div>
+            </td>
+          </tr>
+        );
+      }
+      
+      // --- (NEW) Component សម្រាប់កែសម្រួលទិន្នន័យ (Mobile: Card) ---
+      function EditableExpenseCard({ expense, deleteExpense, updateExpense, expenseTemplates }) {
+        const [isEditing, setIsEditing] = useState(false);
+        const [editData, setEditData] = useState({ ...expense });
+
+        const handleAmountChange = (value) => {
+          const cleanValue = parseAmount(value);
+          if (isNaN(cleanValue) && cleanValue !== '') return;
+          setEditData(prev => ({ ...prev, amount: cleanValue }));
+        };
+
+        const handleSave = async () => {
+          const dataToUpdate = {
+            expenseName: editData.expenseName,
+            date: editData.date,
+            amount: parseFloat(editData.amount)
+          };
+          await updateExpense(expense.id, dataToUpdate);
+          setIsEditing(false);
+        };
+        
+        const handleCancel = () => {
+          setIsEditing(false);
+          setEditData({ ...expense }); // Reset to original data
+        };
+
+        // ធ្វើ Format កាលបរិច្ឆេទ
+        const formattedDate = new Date(expense.date).toLocaleDateString('km-KH', {
+          year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
+        });
+        
+        // ធ្វើ Format លុយរៀល
+        const amountValue = typeof expense.amount === 'number' ? expense.amount : parseFloat(expense.amount);
+        const formattedAmount = isNaN(amountValue) ? 'N/A' : amountValue.toLocaleString('km-KH');
+
+        return (
+          <div className={`p-4 bg-white shadow-md rounded-lg mb-3 ${isEditing ? 'border-2 border-blue-500' : ''}`}>
+            {isEditing ? (
+              // -- ទម្រង់ Edit (Card) --
+              <div className="space-y-3">
+                {/* Edit: ឈ្មោះចំណាយ */}
+                <div>
+                  <label className="text-sm font-medium text-gray-600">ឈ្មោះចំណាយ</label>
+                  <select
+                    value={editData.expenseName}
+                    onChange={(e) => setEditData(prev => ({ ...prev, expenseName: e.target.value }))}
+                    className="w-full mt-1 p-2 border border-gray-300 rounded-md shadow-sm bg-white"
+                  >
+                    {expenseTemplates.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                  </select>
+                </div>
+                
+                {/* Edit: ចំនួនទឹកប្រាក់ */}
+                <div>
+                  <label className="text-sm font-medium text-gray-600">ចំនួនទឹកប្រាក់ (៛)</label>
+                  <input
+                    type="tel"
+                    inputMode="decimal"
+                    value={formatDisplayAmount(editData.amount)}
+                    onChange={(e) => handleAmountChange(e.target.value)}
+                    className="w-full mt-1 p-2 border border-gray-300 rounded-md shadow-sm"
+                  />
+                </div>
+                
+                {/* Edit: កាលបរិច្ឆេទ */}
+                <div>
+                  <label className="text-sm font-medium text-gray-600">កាលបរិច្ឆេទ</label>
+                  <input
+                    type="date"
+                    value={editData.date}
+                    onChange={(e) => setEditData(prev => ({ ...prev, date: e.target.value }))}
+                    className="w-full mt-1 p-2 border border-gray-300 rounded-md shadow-sm"
+                  />
+                </div>
+                
+                {/* Edit: ប៊ូតុង */}
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    onClick={handleCancel}
+                    className="px-4 py-2 bg-gray-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-gray-600"
+                  >
+                    បោះបង់
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-green-700"
+                  >
+                    រក្សាទុក
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // -- ទម្រង់បង្ហាញ (Card) --
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-lg font-semibold text-gray-900">{expense.expenseName}</span>
+                  <span className="text-lg font-bold text-red-700">{formattedAmount} ៛</span>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">{formattedDate}</p>
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="px-3 py-1 bg-yellow-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-yellow-600"
+                  >
+                    កែសម្រួល
+                  </button>
+                  <button
+                    onClick={() => deleteExpense(expense.id)}
+                    className="px-3 py-1 bg-red-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-600"
+                  >
+                    លុប
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+
+      // --- (FIX) Component សម្រាប់បង្ហាញបញ្ជីចំណាយ (បានកែប្រែ) ---
+      function ExpenseList({ expenses, deleteExpense, updateExpense, expenseTemplates, loading, filterType, filterValue }) {
         
         // (NEW) ត្រង (Filter) ទិន្នន័យ
         const filteredExpenses = useMemo(() => {
           if (loading || !filterValue) return [];
           
           return expenses.filter(expense => {
-            const expenseDate = new Date(expense.date);
+            // const expenseDate = new Date(expense.date); // មិនចាំបាច់
             
             switch (filterType) {
               case 'daily':
@@ -514,37 +748,56 @@
         }, [expenses, filterType, filterValue, loading]);
         
         return (
-          <div className="p-6 bg-white shadow-md rounded-lg">
-            <h2 className="text-2xl font-semibold mb-4 text-gray-800">បញ្ជីចំណាយ</h2>
+          <div className="p-0 sm:p-6 sm:bg-white sm:shadow-md sm:rounded-lg">
+            <h2 className="text-2xl font-semibold mb-4 text-gray-800 p-6 sm:p-0">បញ្ជីចំណាយ</h2>
             {loading ? (
               <p className="text-center text-gray-500">កំពុងទាញទិន្ន័យ...</p>
             ) : filteredExpenses.length === 0 ? (
               <p className="text-center text-gray-500">មិនមានទិន្នន័យសម្រាប់ជម្រើសនេះទេ។</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[600px] table-auto text-left">
-                  <thead className="border-b-2 border-gray-300 bg-gray-100">
-                    <tr>
-                      <th className="p-3 font-semibold text-gray-700">ឈ្មោះចំណាយ</th>
-                      <th className="p-3 font-semibold text-gray-700">កាលបរិច្ឆេទ</th>
-                      <th className="p-3 font-semibold text-gray-700">ចំនួនទឹកប្រាក់</th>
-                      <th className="p-3 font-semibold text-gray-700 text-center">សកម្មភាព</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* (FIX) តម្រៀបទិន្នន័យដែលបាន Filter មុនពេលបង្ហាញ (ថ្មី -> ចាស់) */}
-                    {filteredExpenses
-                      .sort((a, b) => new Date(b.date) - new Date(a.date))
-                      .map((expense) => (
-                        <ExpenseRow
-                          key={expense.id}
-                          expense={expense}
-                          deleteExpense={deleteExpense}
-                        />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                {/* (FIX) ទម្រង់តារាង (Desktop) - លាក់នៅលើ Mobile */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full min-w-[600px] table-auto text-left">
+                    <thead className="border-b-2 border-gray-300 bg-gray-100">
+                      <tr>
+                        <th className="p-3 font-semibold text-gray-700">ឈ្មោះចំណាយ</th>
+                        <th className="p-3 font-semibold text-gray-700">កាលបរិច្ឆេទ</th>
+                        <th className="p-3 font-semibold text-gray-700">ចំនួនទឹកប្រាក់</th>
+                        <th className="p-3 font-semibold text-gray-700 text-center">សកម្មភាព</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredExpenses
+                        .sort((a, b) => new Date(b.date) - new Date(a.date))
+                        .map((expense) => (
+                          <EditableExpenseRow
+                            key={expense.id}
+                            expense={expense}
+                            deleteExpense={deleteExpense}
+                            updateExpense={updateExpense}
+                            expenseTemplates={expenseTemplates}
+                          />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* (FIX) ទម្រង់ Card (Mobile) - លាក់នៅលើ Desktop */}
+                <div className="block sm:hidden -mx-4 sm:mx-0">
+                  {filteredExpenses
+                        .sort((a, b) => new Date(b.date) - new Date(a.date))
+                        .map((expense) => (
+                          <EditableExpenseCard
+                            key={expense.id}
+                            expense={expense}
+                            deleteExpense={deleteExpense}
+                            updateExpense={updateExpense}
+                            expenseTemplates={expenseTemplates}
+                          />
+                      ))}
+                </div>
+              </>
             )}
           </div>
         );
@@ -558,7 +811,7 @@
           if (loading || !filterValue) return [];
           
           return expenses.filter(expense => {
-            const expenseDate = new Date(expense.date);
+            // const expenseDate = new Date(expense.date); // មិនចាំបាច់
             
             switch (filterType) {
               case 'daily':
@@ -863,6 +1116,20 @@
           }
         };
         
+        // --- (NEW) Function សម្រាប់កែសម្រួលចំណាយ (ពី RTDB - Public) ---
+        const updateExpense = async (id, dataToUpdate) => {
+          if (!rtdb) return;
+          // dataToUpdate គួរតែជា object ដូចជា { expenseName, date, amount }
+          try {
+            const docPath = `artifacts/${appId}/public/expenses/${id}`;
+            // (FIX) ប្រើ v8/compat syntax
+            await rtdb.ref(docPath).update(dataToUpdate);
+            console.log("Updated expense:", id);
+          } catch (error) {
+            console.error("Error updating document in RTDB: ", error);
+          }
+        };
+        
         // --- Function សម្រាប់បន្ថែមឈ្មោះចំណាយ (រក្សាទុកក្នុង RTDB - Public) ---
         const addExpenseTemplate = async (name) => {
           if (!rtdb || !name.trim()) return;
@@ -937,6 +1204,8 @@
                     <ExpenseList 
                       expenses={expenses} 
                       deleteExpense={deleteExpense} 
+                      updateExpense={updateExpense}
+                      expenseTemplates={expenseTemplates}
                       loading={loading}
                       filterType={filterType}
                       filterValue={filterValue}
