@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>កម្មវិធីកត់ត្រាចំណាយ</title>
+  
+  <!-- 1. Tải Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- 2. Tải React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  
+  <!-- 3. Tải Babel (để dịch JSX) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- 4. Tải Firebase SDKs -->
+  <!-- (FIX) ត្រូវតែប្រើ 'compat' scripts ដើម្បីឱ្យ 'firebase' global object ដំណើរការ -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+  <style>
+    /* ប្រើ Font ខ្មែរ */
+    body {
+      font-family: 'Inter', 'Kantumruy Pro', sans-serif;
+    }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Kantumruy+Pro:ital,wght@0,100..700;1,100..700&display=swap');
+  </style>
+</head>
+<body class="bg-gray-100">
+  
+  <!-- 5. HTML Root Element -->
+  <div id="root"></div>
+
+  <!-- 6. Mã React (đã sao chép từ App.jsx và sửa đổi) -->
+  <script type="text/babel">
+
+      const { useState, useEffect, useMemo } = React;
+
+      // --- ត្រូវប្រាកដថាអថេរទាំងនេះមាន ---
+      // (Canvas នឹងផ្តល់អថេរទាំងនេះដោយស្វ័យប្រវត្តិ)
+      const injectedConfig = typeof __firebase_config !== 'undefined' 
+        ? JSON.parse(__firebase_config) 
+        : null;
+        
+      // ---!!! សំខាន់ جداً !!!---
+      // សូមយក Firebase Config របស់អ្នកមកដាក់ជំនួស Object ទទេ ខាងក្រោម
+      // អ្នកអាចរក Config នេះបានពី Firebase Console -> Project Settings
+      const manualConfig = {
+        apiKey: "AIzaSyDmfuDO3sQEzgpjIP_I6s1UxxCJdcc1nNI",
+        authDomain: "mypayment-b5440.firebaseapp.com",
+        databaseURL: "https://mypayment-b5440-default-rtdb.firebaseio.com",
+        projectId: "mypayment-b5440",
+        storageBucket: "mypayment-b5440.firebasestorage.app",
+        messagingSenderId: "376342723543",
+        appId: "1:376342723543:web:1714e31cab7d177258e992",
+        measurementId: "G-157Y9CQTTG"
+      };
+      // ------------------------------------
+
+      const firebaseConfig = injectedConfig || manualConfig;
+
+      // (FIX) Sanitize the appId for Realtime Database
+      // (FIX) ត្រូវតែប្រើ projectId ជានិច្ច ដើម្បីឱ្យ Realtime ដំណើរការឆ្លងឧបករណ៍
+      const rawAppId = firebaseConfig.projectId || 'default-app-id';
+      // Firebase Realtime Database paths can't contain '.', '#', '$', '[', or ']'
+      // We must sanitize the appId by replacing invalid characters.
+      const appId = rawAppId.replace(/[.#$\[\]]/g, '_');
+
+      const initialAuthToken = typeof __initial_auth_token !== 'undefined' 
+        ? __initial_auth_token 
+        : null;
+
+      // --- ចាប់ផ្តើម Firebase ---
+      let app, auth, rtdb; // លុប db (Firestore) ចេញ, នៅតែ rtdb
+      try {
+        // (FIX) ប្រើ v8/compat syntax
+        app = firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth(app);
+        rtdb = firebase.database(app); // សម្រាប់ Headers និង Expenses (Public)
+      } catch (e) {
+        console.error("Error initializing Firebase: ", e);
+      }
+
+      // --- Component សម្រាប់គ្រប់គ្រងឈ្មោះចំណាយ (ExpenseTemplateManager) ---
+      // (Component នេះមិនបាច់កែទេ ព្រោះវាទទួល props)
+      function ExpenseTemplateManager({ expenseTemplates, addExpenseTemplate, deleteExpenseTemplate }) {
+        const [newTemplateName, setNewTemplateName] = useState('');
+
+        const handleAddTemplate = (e) => {
+          e.preventDefault();
+          if (newTemplateName.trim()) {
+            addExpenseTemplate(newTemplateName.trim());
+            setNewTemplateName('');
+          }
+        };
+
+        return (
+          <div className="mb-8 p-6 bg-white shadow-md rounded-lg">
+            <h2 className="text-2xl font-semibold mb-4 text-gray-800">គ្រប់គ្រងឈ្មោះចំណាយ (Headers)</h2>
+            <form onSubmit={handleAddTemplate} className="flex flex-col sm:flex-row gap-2 mb-4">
+              <input
+                type="text"
+                value={newTemplateName}
+                onChange={(e) => setNewTemplateName(e.target.value)}
+                placeholder="ឧទា៖ ថ្លៃបាយ, ថ្លៃសាំង, ថ្លៃផ្ទះ..."
+                className="flex-grow p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              />
+              <button
+                type="submit"
+                className="p-3 bg-blue-600 text-white font-semibold rounded-md shadow-md hover:bg-blue-700"
+              >
+                បន្ថែមឈ្មោះចំណាយ
+              </button>
+            </form>
+            
+            <div className="flex flex-wrap gap-2">
+              {expenseTemplates.length === 0 && <p className="text-gray-500">មិនទាន់មានឈ្មោះចំណាយ...</p>}
+              {expenseTemplates.map((template) => (
+                <span
+                  key={template.id}
+                  className="flex items-center bg-gray-200 text-gray-800 px-3 py-1 rounded-full text-sm font-medium"
+                >
+                  {template.name}
+                  <button
+                    onClick={() => deleteExpenseTemplate(template.id)}
+                    className="ml-2 text-red-500 hover:text-red-700 font-bold"
+                  >
+                    &times;
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+
+      // --- Component សម្រាប់បង្ហាញតារាង "បញ្ចូល" ទិន្នន័យ (Batch Input Table) ---
+      // (Component នេះមិនបាច់កែទេ ព្រោះវាទទួល props)
+      function BatchExpenseForm({ addExpense, expenseTemplates, loading, setLoading }) {
+        const defaultDate = new Date().toISOString().split('T')[0];
+        const createNewRow = () => ({
+          id: crypto.randomUUID(), // ID សម្រាប់ React state
+          expenseName: expenseTemplates.length > 0 ? expenseTemplates[0].name : '',
+          amount: '',
+          date: defaultDate,
+        });
+
+        const [rows, setRows] = useState([createNewRow()]);
+
+        // Update default expenseName in rows when templates load
+        useEffect(() => {
+          if (expenseTemplates.length > 0) {
+            setRows(prevRows => 
+              prevRows.map(row => ({
+                ...row,
+                expenseName: row.expenseName || expenseTemplates[0].name
+              }))
+            );
+          }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [expenseTemplates]);
+
+        const handleUpdateRow = (id, field, value) => {
+          setRows(prevRows =>
+            prevRows.map(row =>
+              row.id === id ? { ...row, [field]: value } : row
+            )
+          );
+        };
+
+        const handleAddRow = () => {
+          setRows([...rows, createNewRow()]);
+        };
+
+        const handleDeleteRow = (id) => {
+          setRows(prevRows => prevRows.filter(row => row.id !== id));
+        };
+
+        const handleSubmitAll = async () => {
+          setLoading(true);
+          const validRows = rows.filter(row => row.expenseName && row.amount > 0 && row.date);
+          
+          // ប្រើ Promise.all ដើម្បីឲ្យវាដំណើរការព្រមគ្នា
+          try {
+            await Promise.all(
+              validRows.map(row => {
+                const { id, ...expenseData } = row; // មិនរក្សាទុក ID បណ្តោះអាសន្ន
+                return addExpense({
+                  ...expenseData,
+                  amount: parseFloat(expenseData.amount)
+                });
+              })
+            );
+            console.log(`Successfully added ${validRows.length} expenses.`);
+            setRows([createNewRow()]); // Reset តារាង
+          } catch (error) {
+            console.error("Error saving expenses: ", error);
+          }
+          setLoading(false);
+        };
+
+        return (
+          <div className="mb-8 p-6 bg-white shadow-md rounded-lg">
+            <h2 className="text-2xl font-semibold mb-4 text-gray-800">តារាងបញ្ចូលចំណាយថ្មី</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px]">
+                <thead>
+                  <tr className="border-b-2 border-gray-300 bg-gray-100">
+                    <th className="p-3 font-semibold text-gray-700 text-left">ឈ្មោះចំណាយ</th>
+                    <th className="p-3 font-semibold text-gray-700 text-left">ចំនួនទឹកប្រាក់ (៛)</th>
+                    <th className="p-3 font-semibold text-gray-700 text-left">កាលបរិច្ឆេទ</th>
+                    <th className="p-3 font-semibold text-gray-700 text-center">លុប</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(row => (
+                    <tr key={row.id} className="border-b">
+                      {/* ឈ្មោះចំណាយ (Dropdown) */}
+                      <td className="p-2">
+                        <select
+                          value={row.expenseName}
+                          onChange={(e) => handleUpdateRow(row.id, 'expenseName', e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white"
+                        >
+                          {expenseTemplates.length === 0 && <option value="" disabled>សូមបន្ថែមឈ្មោះចំណាយ...</option>}
+                          {expenseTemplates.map((template) => (
+                            <option key={template.id} value={template.name}>
+                              {template.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      
+                      {/* ចំនួនទឹកប្រាក់ */}
+                      <td className="p-2">
+                        <input
+                          type="number"
+                          value={row.amount}
+                          onChange={(e) => handleUpdateRow(row.id, 'amount', e.target.value)}
+                          placeholder="0"
+                          min="1"
+                          className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                        />
+                      </td>
+
+                      {/* កាលបរិច្ឆេទ */}
+                      <td className="p-2">
+                        <input
+                          type="date"
+                          value={row.date}
+                          onChange={(e) => handleUpdateRow(row.id, 'date', e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                        />
+                      </td>
+                      
+                      {/* ប៊ូតុងលុបแถว */}
+                      <td className="p-2 text-center">
+                        <button
+                          onClick={() => handleDeleteRow(row.id)}
+                          className="px-3 py-1 bg-red-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-600"
+                        >
+                          &times;
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row justify-between items-center mt-4 gap-2">
+              <button
+                onClick={handleAddRow}
+                className="w-full sm:w-auto p-3 bg-green-600 text-white font-semibold rounded-md shadow-md hover:bg-green-700"
+              >
+                + បន្ថែមជួរថ្មី
+              </button>
+              <button
+                onClick={handleSubmitAll}
+                disabled={loading || rows.length === 0 || expenseTemplates.length === 0}
+                className={`w-full sm:w-auto p-3 text-white font-semibold rounded-md shadow-md transition-colors ${
+                  (loading || expenseTemplates.length === 0)
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                {loading ? 'កំពុងរក្សាទុក...' : (expenseTemplates.length === 0 ? 'ត្រូវបន្ថែមឈ្មោះចំណាយសិន' : 'រក្សាទុកទាំងអស់')}
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+
+      // --- Component សម្រាប់បង្ហាញแถวទិន្នន័យ (Expense Row) មួយក្នុងតារាង "បង្ហាញ" ---
+      // (Component នេះមិនបាច់កែទេ)
+      function ExpenseRow({ expense, deleteExpense }) {
+        // ធ្វើ Format កាលបរិច្ឆេទ
+        const formattedDate = new Date(expense.date).toLocaleDateString('km-KH', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          timeZone: 'UTC' // ធានាថាកាលបរិច្ឆេទមិនផ្លាស់ប្តូរដោយសារ Timezone
+        });
+        
+        // ធ្វើ Format លុយរៀល
+        const formattedAmount = parseInt(expense.amount).toLocaleString('km-KH');
+
+        return (
+          <tr className="border-b border-gray-200 hover:bg-gray-50">
+            <td className="p-3 py-4 text-gray-900">{expense.expenseName}</td>
+            <td className="p-3 py-4 text-gray-600">{formattedDate}</td>
+            <td className="p-3 py-4 text-red-600 font-bold">{formattedAmount} ៛</td>
+            <td className="p-3 py-4 text-center">
+              <button
+                onClick={() => deleteExpense(expense.id)}
+                className="px-3 py-1 bg-red-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-600 transition-colors"
+              >
+                លុប
+              </button>
+            </td>
+          </tr>
+        );
+      }
+
+      // --- Component សម្រាប់បង្ហាញបញ្ជីចំណាយ ---
+      // (Component នេះមិនបាច់កែទេ)
+      function ExpenseList({ expenses, deleteExpense, loading }) {
+        return (
+          <div className="p-6 bg-white shadow-md rounded-lg">
+            <h2 className="text-2xl font-semibold mb-4 text-gray-800">បញ្ជីចំណាយ</h2>
+            {loading ? (
+              <p className="text-center text-gray-500">កំពុងទាញទិន្ន័យ...</p>
+            ) : expenses.length === 0 ? (
+              <p className="text-center text-gray-500">មិនទាន់មានចំណាយនៅឡើយ។</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[600px] table-auto text-left">
+                  <thead className="border-b-2 border-gray-300 bg-gray-100">
+                    <tr>
+                      <th className="p-3 font-semibold text-gray-700">ឈ្មោះចំណាយ</th>
+                      <th className="p-3 font-semibold text-gray-700">កាលបរិច្ឆេទ</th>
+                      <th className="p-3 font-semibold text-gray-700">ចំនួនទឹកប្រាក់</th>
+                      <th className="p-3 font-semibold text-gray-700 text-center">សកម្មភាព</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expenses.map((expense) => (
+                      <ExpenseRow
+                        key={expense.id}
+                        expense={expense}
+                        deleteExpense={deleteExpense}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // --- Component សម្រាប់បង្ហាញការសរុបប្រចាំខែ ---
+      // (Component នេះមិនបាច់កែទេ)
+      function ExpenseSummary({ expenses }) {
+        // គណនាផលបូកសរុប
+        const totalExpense = useMemo(() => {
+          return expenses.reduce((total, expense) => total + expense.amount, 0);
+        }, [expenses]);
+
+        return (
+          <div className="p-6 bg-white shadow-md rounded-lg mb-8">
+            <h2 className="text-2xl font-semibold text-gray-800">សរុបចំណាយទាំងអស់ (៛)</h2>
+            <p className="text-4xl font-bold text-red-700 mt-2">
+              {totalExpense.toLocaleString('km-KH')} ៛
+            </p>
+          </div>
+        );
+      }
+
+      // --- Component សម្រាប់ Navigation Bar ---
+      // (Component នេះមិនបាច់កែទេ)
+      function Navbar({ currentPage, setCurrentPage }) {
+        const navItems = [
+          { id: 'dashboard', label: 'ទំព័រដើម' },
+          { id: 'add', label: 'បន្ថែមចំណាយ' },
+          { id: 'templates', label: 'គ្រប់គ្រងឈ្មោះចំណាយ' }, // កែប្រែពី categories -> templates
+        ];
+
+        const getButtonClass = (pageId) => {
+          const baseClass = "flex-1 p-3 sm:p-4 text-center font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50";
+          if (pageId === currentPage) {
+            return `${baseClass} bg-blue-700 text-white`;
+          }
+          return `${baseClass} bg-white text-blue-600 hover:bg-gray-100`;
+        };
+
+        return (
+          <nav className="mb-8 bg-white shadow-md rounded-lg overflow-hidden flex divide-x divide-gray-200">
+            {navItems.map((item, index) => (
+              <button
+                key={item.id}
+                onClick={() => setCurrentPage(item.id)}
+                className={`${getButtonClass(item.id)} ${
+                  index === 0 ? 'rounded-l-lg' : ''
+                } ${index === navItems.length - 1 ? 'rounded-r-lg' : ''}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        );
+      }
+
+
+      // --- Main App Component ---
+      // (FIX) Đã xóa 'export default'
+      function App() {
+        const [expenses, setExpenses] = useState([]);
+        const [expenseTemplates, setExpenseTemplates] = useState([]); // កែប្រែពី categories
+        const [userId, setUserId] = useState(null);
+        // const [isAuthReady, setIsAuthReady] = useState(false); // មិនត្រូវការសម្រាប់ data fetching ទៀតទេ
+        const [loading, setLoading] = useState(true); // សម្រាប់ពេលកំពុងទាញទិន្នន័យ
+        const [submitLoading, setSubmitLoading] = useState(false); // សម្រាប់ពេលកំពុង Submit
+        const [currentPage, setCurrentPage] = useState('dashboard'); // State សម្រាប់ Page
+
+        // 1. ដំណើរការ Authentication (សម្រាប់បង្ហាញ User ID)
+        useEffect(() => {
+          if (!auth) {
+            console.log("Auth is not ready");
+            return;
+          }
+
+          // (FIX) ប្រើ v8/compat syntax
+          const unsubscribe = auth.onAuthStateChanged(async (user) => {
+            if (user) {
+              console.log("User is signed in with UID:", user.uid);
+              setUserId(user.uid);
+              // setIsAuthReady(true);
+            } else {
+              console.log("No user signed in, attempting sign in...");
+              try {
+                if (initialAuthToken) {
+                  // (FIX) ប្រើ v8/compat syntax
+                  await auth.signInWithCustomToken(initialAuthToken);
+                  console.log("Signed in with custom token.");
+                } else {
+                  // (FIX) ប្រើ v8/compat syntax
+                  await auth.signInAnonymously();
+                  console.log("Signed in anonymously.");
+                }
+              } catch (error) {
+                console.error("Error signing in: ", error);
+                // setIsAuthReady(true);
+              }
+            }
+          });
+
+          return () => unsubscribe();
+        }, []);
+        
+
+        // 2. ភ្ជាប់ទៅ Firebase (Realtime DB សម្រាប់ទិន្នន័យទាំងអស់)
+        // លុប useEffect ទីមួយដែលអាស្រ័យលើ isAuthReady
+        
+        useEffect(() => {
+          // ដំណើរការ Templates និង Expenses ភ្លាមៗ (Public)
+          if (!rtdb) {
+            console.log("RTDB not ready");
+            return;
+          }
+          
+          setLoading(true);
+          
+          // --- Listener សម្រាប់ ExpenseTemplates (Public - Realtime Database) ---
+          console.log(`Setting up RTDB listener for public headers: artifacts/${appId}/public/expenseTemplates`);
+          // (FIX) ប្រើ v8/compat syntax
+          const templatesRef = rtdb.ref(`artifacts/${appId}/public/expenseTemplates`);
+          const unsubscribeTemplates = templatesRef.on('value', 
+            (snapshot) => {
+              const templatesData = [];
+              if (snapshot.exists()) {
+                const data = snapshot.val();
+                // បំប្លែង Object ទៅ Array
+                for (const key in data) {
+                  templatesData.push({ id: key, ...data[key] });
+                }
+              }
+              // តម្រៀបតាមពេលបង្កើត
+              templatesData.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+              setExpenseTemplates(templatesData);
+              console.log("Public templates loaded:", templatesData.length);
+            },
+            (error) => {
+              console.error("Error fetching expense templates from RTDB: ", error);
+            }
+          );
+
+          // --- (កែប្រែ) Listener សម្រាប់ Expenses (Public - Realtime Database) ---
+          console.log(`Setting up RTDB listener for public expenses: artifacts/${appId}/public/expenses`);
+          // (FIX) ប្រើ v8/compat syntax
+          const expensesRef = rtdb.ref(`artifacts/${appId}/public/expenses`);
+          const unsubscribeExpenses = expensesRef.on('value', 
+            (snapshot) => {
+              const expensesData = [];
+              if (snapshot.exists()) {
+                const data = snapshot.val();
+                for (const key in data) {
+                  expensesData.push({ id: key, ...data[key] });
+                }
+              }
+              // Sort
+              expensesData.sort((a, b) => new Date(b.date) - new Date(a.date));
+              setExpenses(expensesData);
+              setLoading(false); // ដាក់ Loading false បន្ទាប់ពីទាញ Expenses រួច
+            },
+            (error) => {
+              console.error("Error fetching expenses from RTDB: ", error);
+              setLoading(false);
+            }
+          );
+
+          // Cleanup listener
+          return () => {
+            console.log("Cleaning up RTDB listeners.");
+            // (FIX) ប្រើ v8/compat syntax សម្រាប់ .off()
+            templatesRef.off('value', unsubscribeTemplates);
+            expensesRef.off('value', unsubscribeExpenses);
+          };
+        }, []); // ដំណើរការតែម្តងពេល component mount
+
+        // --- (កែប្រែ) Function សម្រាប់បន្ថែមចំណាយ (រក្សាទុកក្នុង RTDB - Public) ---
+        const addExpense = async (expense) => {
+          if (!rtdb) return Promise.reject("RTDB not ready");
+          
+          // បន្ថែម userId ទៅក្នុងទិន្នន័យ public
+          const expenseData = {
+            ...expense,
+            // (FIX) ប្រើ v8/compat syntax
+            createdAt: firebase.database.ServerValue.TIMESTAMP,
+            addedBy: userId || 'anonymous' // តាមដានអ្នកដែលបានបន្ថែម
+          };
+
+          try {
+            const collectionPath = `artifacts/${appId}/public/expenses`;
+            // (FIX) ប្រើ v8/compat syntax
+            const newExpenseRef = rtdb.ref(collectionPath).push();
+            await newExpenseRef.set(expenseData);
+          } catch (error) {
+            console.error("Error adding document to RTDB: ", error);
+            return Promise.reject(error); // សម្រាប់ Promise.all
+          }
+        };
+
+        // --- (កែប្រែ) Function សម្រាប់លុបចំណាយ (ពី RTDB - Public) ---
+        const deleteExpense = async (id) => {
+          if (!rtdb) return;
+          try {
+            const docPath = `artifacts/${appId}/public/expenses/${id}`;
+            // (FIX) ប្រើ v8/compat syntax
+            await rtdb.ref(docPath).remove();
+          } catch (error) {
+            console.error("Error deleting document from RTDB: ", error);
+          }
+        };
+        
+        // --- Function សម្រាប់បន្ថែមឈ្មោះចំណាយ (រក្សាទុកក្នុង RTDB - Public) ---
+        const addExpenseTemplate = async (name) => {
+          if (!rtdb || !name.trim()) return;
+          try {
+            const collectionPath = `artifacts/${appId}/public/expenseTemplates`;
+            // (FIX) ប្រើ v8/compat syntax
+            const newTemplateRef = rtdb.ref(collectionPath).push(); // បង្កើត key ថ្មី
+            await newTemplateRef.set({ 
+              name: name.trim(), 
+              // (FIX) ប្រើ v8/compat syntax
+              createdAt: firebase.database.ServerValue.TIMESTAMP
+            });
+            console.log("Added public template:", name);
+          } catch (error)
+          {
+            console.error("Error adding expense template to RTDB: ", error);
+          }
+        };
+        
+        // --- Function សម្រាប់លុបឈ្មោះចំណាយ (ពី RTDB - Public) ---
+        // (មិនបាច់កែប្រែទេ ព្រោះវាត្រឹមត្រូវហើយ)
+        const deleteExpenseTemplate = async (id) => {
+          if (!rtdb) return;
+          try {
+            const docPath = `artifacts/${appId}/public/expenseTemplates/${id}`;
+            // (FIX) ប្រើ v8/compat syntax
+            await rtdb.ref(docPath).remove();
+            console.log("Deleted public template:", id);
+          } catch (error) {
+            console.error("Error deleting expense template from RTDB: ", error);
+          }
+        };
+
+        return (
+          <div className="min-h-screen bg-gray-100 p-4 sm:p-8">
+            <div className="max-w-6xl mx-auto">
+              <header className="mb-8 text-center">
+                <h1 className="text-4xl font-bold text-blue-700">កម្មវិធីកត់ត្រាចំណាយ</h1>
+                <p className="text-lg text-gray-600">គ្រប់គ្រងថវិកាប្រចាំខែរបស់អ្នក</p>
+                {userId && (
+                  <p className="text-xs text-gray-400 mt-2">User ID: {userId}</p>
+                )}
+              </header>
+              
+              {/* Navigation Bar */}
+              <Navbar currentPage={currentPage} setCurrentPage={setCurrentPage} />
+
+              <main>
+                {/* បង្ហាញ Page ដោយផ្អែកលើ State */}
+                
+                {currentPage === 'dashboard' && (
+                  <>
+                    {/* ទំព័រដើម (Dashboard) */}
+                    <ExpenseSummary expenses={expenses} />
+                    <ExpenseList 
+                      expenses={expenses} 
+                      deleteExpense={deleteExpense} 
+                      loading={loading} 
+                    />
+                  </>
+                )}
+
+                {currentPage === 'add' && (
+                  <>
+                    {/* Page បន្ថែមចំណាយ */}
+                    <BatchExpenseForm 
+                      addExpense={addExpense}
+                      expenseTemplates={expenseTemplates}
+                      loading={submitLoading}
+                      setLoading={setSubmitLoading}
+                    />
+                  </>
+                )}
+
+                {currentPage === 'templates' && ( // កែប្រែពី 'categories'
+                  <>
+                    {/* Page គ្រប់គ្រងឈ្មោះចំណាយ */}
+                    <ExpenseTemplateManager 
+                      expenseTemplates={expenseTemplates}
+                      addExpenseTemplate={addExpenseTemplate}
+                      deleteExpenseTemplate={deleteExpenseTemplate}
+                    />
+                  </>
+                )}
+                
+              </main>
+            </div>
+          </div>
+        );
+      }
+
+      // --- 7. Render App ---
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+
+  </script>
+
+</body>
+</html>
+
