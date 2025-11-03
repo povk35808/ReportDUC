@@ -139,7 +139,7 @@
 
 
       // --- Component សម្រាប់បង្ហាញតារាង "បញ្ចូល" ទិន្នន័យ (Batch Input Table) ---
-      // (Component នេះមិនបាច់កែទេ ព្រោះវាទទួល props)
+      // (FIX) បានកែប្រែ Component នេះ ឱ្យ Responsive
       function BatchExpenseForm({ addExpense, expenseTemplates, loading, setLoading }) {
         const defaultDate = new Date().toISOString().split('T')[0];
         const createNewRow = () => ({
@@ -204,27 +204,38 @@
         };
 
         return (
-          <div className="mb-8 p-6 bg-white shadow-md rounded-lg">
+          <div className="mb-8 p-4 sm:p-6 bg-white shadow-md rounded-lg">
             <h2 className="text-2xl font-semibold mb-4 text-gray-800">តារាងបញ្ចូលចំណាយថ្មី</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px]">
-                <thead>
-                  <tr className="border-b-2 border-gray-300 bg-gray-100">
-                    <th className="p-3 font-semibold text-gray-700 text-left">ឈ្មោះចំណាយ</th>
-                    <th className="p-3 font-semibold text-gray-700 text-left">ចំនួនទឹកប្រាក់ (៛)</th>
-                    <th className="p-3 font-semibold text-gray-700 text-left">កាលបរិច្ឆេទ</th>
-                    <th className="p-3 font-semibold text-gray-700 text-center">លុប</th>
-                  </tr>
-                </thead>
-                <tbody>
+            
+            {/* (FIX) បានប្តូរពី Table ទៅជា List សម្រាប់ Mobile */}
+            <div className="">
+              {/* (FIX) HEADERS: លាក់នៅលើ Mobile, បង្ហាញនៅលើ Desktop */}
+              <div className="hidden sm:table w-full">
+                <div className="sm:table-header-group">
+                  <div className="sm:table-row border-b-2 border-gray-300 bg-gray-100">
+                    <div className="sm:table-cell p-3 font-semibold text-gray-700 text-left">ឈ្មោះចំណាយ</div>
+                    <div className="sm:table-cell p-3 font-semibold text-gray-700 text-left">ចំនួនទឹកប្រាក់ (៛)</div>
+                    <div className="sm:table-cell p-3 font-semibold text-gray-700 text-left">កាលបរិច្ឆេទ</div>
+                    <div className="sm:table-cell p-3 font-semibold text-gray-700 text-center">លុប</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* (FIX) BODY: បង្ហាញជា Card នៅលើ Mobile, ជា Table Row នៅលើ Desktop */}
+              <div className="sm:table w-full sm:border-collapse">
+                <div className="sm:table-row-group">
                   {rows.map(row => (
-                    <tr key={row.id} className="border-b">
+                    // (FIX) រាល់ Row គឺជា Card នៅលើ Mobile (block), គឺជា Table Row នៅលើ Desktop
+                    <div key={row.id} className="block sm:table-row border shadow-md sm:shadow-none rounded-lg sm:rounded-none overflow-hidden mb-4 sm:mb-0 sm:border-b">
+                      
                       {/* ឈ្មោះចំណាយ (Dropdown) */}
-                      <td className="p-2">
+                      {/* (FIX) រាល់ Cell គឺជា Block នៅលើ Mobile, Table Cell នៅលើ Desktop */}
+                      <div className="p-3 sm:p-2 block sm:table-cell border-b sm:border-none">
+                        <label className="text-sm font-medium text-gray-600 sm:hidden">ឈ្មោះចំណាយ</label>
                         <select
                           value={row.expenseName}
                           onChange={(e) => handleUpdateRow(row.id, 'expenseName', e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white"
+                          className="w-full mt-1 sm:mt-0 p-2 border border-gray-300 rounded-md shadow-sm bg-white"
                         >
                           {expenseTemplates.length === 0 && <option value="" disabled>សូមបន្ថែមឈ្មោះចំណាយ...</option>}
                           {expenseTemplates.map((template) => (
@@ -233,43 +244,46 @@
                             </option>
                           ))}
                         </select>
-                      </td>
+                      </div>
                       
                       {/* ចំនួនទឹកប្រាក់ */}
-                      <td className="p-2">
+                      <div className="p-3 sm:p-2 block sm:table-cell border-b sm:border-none">
+                        <label className="text-sm font-medium text-gray-600 sm:hidden">ចំនួនទឹកប្រាក់ (៛)</label>
                         <input
                           type="number"
                           value={row.amount}
                           onChange={(e) => handleUpdateRow(row.id, 'amount', e.target.value)}
                           placeholder="0"
                           min="1"
-                          className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                          className="w-full mt-1 sm:mt-0 p-2 border border-gray-300 rounded-md shadow-sm"
                         />
-                      </td>
+                      </div>
 
                       {/* កាលបរិច្ឆេទ */}
-                      <td className="p-2">
+                      <div className="p-3 sm:p-2 block sm:table-cell border-b sm:border-none">
+                        <label className="text-sm font-medium text-gray-600 sm:hidden">កាលបរិច្ឆេទ</label>
                         <input
                           type="date"
                           value={row.date}
                           onChange={(e) => handleUpdateRow(row.id, 'date', e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                          className="w-full mt-1 sm:mt-0 p-2 border border-gray-300 rounded-md shadow-sm"
                         />
-                      </td>
+                      </div>
                       
                       {/* ប៊ូតុងលុបแถว */}
-                      <td className="p-2 text-center">
+                      <div className="p-3 sm:p-2 block sm:table-cell text-right sm:text-center">
+                        {/* (FIX) ប្តូរ Button ឱ្យពេញទទឹងនៅលើ Mobile */}
                         <button
                           onClick={() => handleDeleteRow(row.id)}
-                          className="px-3 py-1 bg-red-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-600"
+                          className="px-3 py-2 sm:py-1 bg-red-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-600 w-full sm:w-auto"
                         >
-                          &times;
+                          លុបแถวនេះ
                         </button>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </div>
             </div>
             
             <div className="flex flex-col sm:flex-row justify-between items-center mt-4 gap-2">
@@ -383,7 +397,7 @@
       }
 
       // --- Component សម្រាប់ Navigation Bar ---
-      // (Component នេះមិនបាច់កែទេ)
+      // (FIX) លាក់នៅលើ Mobile (hidden), បង្ហាញនៅលើ Desktop (sm:flex)
       function Navbar({ currentPage, setCurrentPage }) {
         const navItems = [
           { id: 'dashboard', label: 'ទំព័រដើម' },
@@ -400,7 +414,7 @@
         };
 
         return (
-          <nav className="mb-8 bg-white shadow-md rounded-lg overflow-hidden flex divide-x divide-gray-200">
+          <nav className="mb-8 bg-white shadow-md rounded-lg overflow-hidden hidden sm:flex divide-x divide-gray-200">
             {navItems.map((item, index) => (
               <button
                 key={item.id}
@@ -410,6 +424,51 @@
                 } ${index === navItems.length - 1 ? 'rounded-r-lg' : ''}`}
               >
                 {item.label}
+              </button>
+            ))}
+          </nav>
+        );
+      }
+      
+      // --- (NEW) Component សម្រាប់ Mobile Bottom Navigation Bar ---
+      function MobileNavbar({ currentPage, setCurrentPage }) {
+        const navItems = [
+          { id: 'dashboard', label: 'ទំព័រដើម', icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-2a1 1 0 01-1-1v-4z" />
+            </svg>
+          )},
+          { id: 'add', label: 'បន្ថែម', icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          )},
+          { id: 'templates', label: 'គ្រប់គ្រង', icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          )},
+        ];
+        
+        const getButtonClass = (pageId) => {
+          const baseClass = "flex flex-col items-center justify-center flex-1 py-2 transition-colors duration-200 focus:outline-none";
+          if (pageId === currentPage) {
+            return `${baseClass} text-blue-700`;
+          }
+          return `${baseClass} text-gray-500 hover:text-blue-600`;
+        };
+
+        return (
+          <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 flex justify-around">
+            {navItems.map(item => (
+              <button
+                key={item.id}
+                onClick={() => setCurrentPage(item.id)}
+                className={getButtonClass(item.id)}
+              >
+                {item.icon}
+                <span className="text-xs font-medium">{item.label}</span>
               </button>
             ))}
           </nav>
@@ -602,7 +661,8 @@
         };
 
         return (
-          <div className="min-h-screen bg-gray-100 p-4 sm:p-8">
+          // (FIX) បន្ថែម pb-24 (padding-bottom: 6rem) ដើម្បីកុំឱ្យ MobileNavbar គ្របលើเนื้อหา
+          <div className="min-h-screen bg-gray-100 p-4 sm:p-8 pb-24 sm:pb-8">
             <div className="max-w-6xl mx-auto">
               <header className="mb-8 text-center">
                 <h1 className="text-4xl font-bold text-blue-700">កម្មវិធីកត់ត្រាចំណាយ</h1>
@@ -612,7 +672,7 @@
                 )}
               </header>
               
-              {/* Navigation Bar */}
+              {/* Navigation Bar (Desktop) */}
               <Navbar currentPage={currentPage} setCurrentPage={setCurrentPage} />
 
               <main>
@@ -654,6 +714,9 @@
                 )}
                 
               </main>
+
+              {/* (NEW) Mobile Navigation Bar */}
+              <MobileNavbar currentPage={currentPage} setCurrentPage={setCurrentPage} />
             </div>
           </div>
         );
