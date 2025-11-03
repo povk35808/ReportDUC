@@ -5,17 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>កម្មវិធីកត់ត្រាចំណាយ</title>
   
-  <!-- 1. Tải Tailwind CSS -->
+  <!-- 1. ទាញយក Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- 2. Tải React & ReactDOM -->
+  <!-- 2. ទាញយក React & ReactDOM -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   
-  <!-- 3. Tải Babel (để dịch JSX) -->
+  <!-- 3. ទាញយក Babel (ដើម្បីបកប្រែ JSX) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   
-  <!-- 4. Tải Firebase SDKs -->
+  <!-- 4. ទាញយក Firebase SDKs -->
   <!-- (FIX) ត្រូវតែប្រើ 'compat' scripts ដើម្បីឱ្យ 'firebase' global object ដំណើរការ -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -34,7 +34,7 @@
   <!-- 5. HTML Root Element -->
   <div id="root"></div>
 
-  <!-- 6. Mã React (đã sao chép từ App.jsx và sửa đổi) -->
+  <!-- 6. កូដ React (បានចម្លងពី App.jsx និងកែសម្រួល) -->
   <script type="text/babel">
 
       const { useState, useEffect, useMemo } = React;
@@ -45,7 +45,7 @@
         ? JSON.parse(__firebase_config) 
         : null;
         
-      // ---!!! សំខាន់ جداً !!!---
+      // ---!!! សំខាន់ណាស់ !!!---
       // សូមយក Firebase Config របស់អ្នកមកដាក់ជំនួស Object ទទេ ខាងក្រោម
       // អ្នកអាចរក Config នេះបានពី Firebase Console -> Project Settings
       const manualConfig = {
@@ -270,14 +270,14 @@
                         />
                       </div>
                       
-                      {/* ប៊ូតុងលុបแถว */}
+                      {/* ប៊ូតុងលុបជួរ */}
                       <div className="p-3 sm:p-2 block sm:table-cell text-right sm:text-center">
                         {/* (FIX) ប្តូរ Button ឱ្យពេញទទឹងនៅលើ Mobile */}
                         <button
                           onClick={() => handleDeleteRow(row.id)}
                           className="px-3 py-2 sm:py-1 bg-red-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-600 w-full sm:w-auto"
                         >
-                          លុបแถวនេះ
+                          លុបជួរនេះ
                         </button>
                       </div>
                     </div>
@@ -310,8 +310,7 @@
       }
 
 
-      // --- Component សម្រាប់បង្ហាញแถวទិន្នន័យ (Expense Row) មួយក្នុងតារាង "បង្ហាញ" ---
-      // (Component នេះមិនបាច់កែទេ)
+      // --- Component សម្រាប់បង្ហាញជួរទិន្នន័យ (Expense Row) មួយក្នុងតារាង "បង្ហាញ" ---
       function ExpenseRow({ expense, deleteExpense }) {
         // ធ្វើ Format កាលបរិច្ឆេទ
         const formattedDate = new Date(expense.date).toLocaleDateString('km-KH', {
@@ -342,7 +341,6 @@
       }
 
       // --- Component សម្រាប់បង្ហាញបញ្ជីចំណាយ ---
-      // (Component នេះមិនបាច់កែទេ)
       function ExpenseList({ expenses, deleteExpense, loading }) {
         return (
           <div className="p-6 bg-white shadow-md rounded-lg">
@@ -379,7 +377,6 @@
       }
 
       // --- Component សម្រាប់បង្ហាញការសរុបប្រចាំខែ ---
-      // (Component នេះមិនបាច់កែទេ)
       function ExpenseSummary({ expenses }) {
         // គណនាផលបូកសរុប
         const totalExpense = useMemo(() => {
@@ -661,15 +658,16 @@
         };
 
         return (
-          // (FIX) បន្ថែម pb-24 (padding-bottom: 6rem) ដើម្បីកុំឱ្យ MobileNavbar គ្របលើเนื้อหา
+          // (FIX) បន្ថែម pb-24 (padding-bottom: 6rem) ដើម្បីកុំឱ្យ MobileNavbar គ្របលើមាតិកា
           <div className="min-h-screen bg-gray-100 p-4 sm:p-8 pb-24 sm:pb-8">
             <div className="max-w-6xl mx-auto">
               <header className="mb-8 text-center">
                 <h1 className="text-4xl font-bold text-blue-700">កម្មវិធីកត់ត្រាចំណាយ</h1>
-                <p className="text-lg text-gray-600">គ្រប់គ្រងថវិកាប្រចាំខែរបស់អ្នក</p>
-                {userId && (
+                {/* (FIX) បានប្តូរអត្ថបទ និងលុប User ID */}
+                <p className="text-lg text-gray-600">ចំណាយប្រចាំខែ DUC</p>
+                {/* {userId && (
                   <p className="text-xs text-gray-400 mt-2">User ID: {userId}</p>
-                )}
+                )} */}
               </header>
               
               {/* Navigation Bar (Desktop) */}
