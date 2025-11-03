@@ -85,7 +85,6 @@
       }
 
       // --- Component សម្រាប់គ្រប់គ្រងឈ្មោះចំណាយ (ExpenseTemplateManager) ---
-      // (Component នេះមិនបាច់កែទេ ព្រោះវាទទួល props)
       function ExpenseTemplateManager({ expenseTemplates, addExpenseTemplate, deleteExpenseTemplate }) {
         const [newTemplateName, setNewTemplateName] = useState('');
 
@@ -139,7 +138,6 @@
 
 
       // --- Component សម្រាប់បង្ហាញតារាង "បញ្ចូល" ទិន្នន័យ (Batch Input Table) ---
-      // (FIX) បានកែប្រែ Component នេះ ឱ្យ Responsive
       function BatchExpenseForm({ addExpense, expenseTemplates, loading, setLoading }) {
         const defaultDate = new Date().toISOString().split('T')[0];
         const createNewRow = () => ({
@@ -171,6 +169,27 @@
             )
           );
         };
+        
+        // --- (NEW) Function សម្រាប់ Format លេខ ---
+        const formatDisplayAmount = (amount) => {
+          if (!amount) return '';
+          const num = Number(amount);
+          if (isNaN(num)) return '';
+          return num.toLocaleString('en-US'); // ប្រើ en-US សម្រាប់សញ្ញាក្បៀស
+        };
+        
+        // --- (NEW) Function សម្រាប់ xử lý input លេខ ---
+        const handleAmountChange = (id, value) => {
+          const cleanValue = value.replace(/,/g, ''); // លុបសញ្ញាក្បៀសចេញ
+          
+          // អនុញ្ញាតតែលេខ ឬ string ទទេ
+          if (isNaN(cleanValue) && cleanValue !== '') {
+            return; 
+          }
+          
+          handleUpdateRow(id, 'amount', cleanValue);
+        };
+        // ------------------------------------------
 
         const handleAddRow = () => {
           setRows([...rows, createNewRow()]);
@@ -189,6 +208,7 @@
             await Promise.all(
               validRows.map(row => {
                 const { id, ...expenseData } = row; // មិនរក្សាទុក ID បណ្តោះអាសន្ន
+                // `expenseData.amount` គឺជាលេខសុទ្ធ (e.g., "1000000")
                 return addExpense({
                   ...expenseData,
                   amount: parseFloat(expenseData.amount)
@@ -246,15 +266,15 @@
                         </select>
                       </div>
                       
-                      {/* ចំនួនទឹកប្រាក់ */}
+                      {/* (FIX) កែប្រែ Input ចំនួនទឹកប្រាក់ */}
                       <div className="p-3 sm:p-2 block sm:table-cell border-b sm:border-none">
                         <label className="text-sm font-medium text-gray-600 sm:hidden">ចំនួនទឹកប្រាក់ (៛)</label>
                         <input
-                          type="number"
-                          value={row.amount}
-                          onChange={(e) => handleUpdateRow(row.id, 'amount', e.target.value)}
+                          type="tel" 
+                          inputMode="decimal"
+                          value={formatDisplayAmount(row.amount)} 
+                          onChange={(e) => handleAmountChange(row.id, e.target.value)} 
                           placeholder="0"
-                          min="1"
                           className="w-full mt-1 sm:mt-0 p-2 border border-gray-300 rounded-md shadow-sm"
                         />
                       </div>
@@ -321,7 +341,9 @@
         });
         
         // ធ្វើ Format លុយរៀល
-        const formattedAmount = parseInt(expense.amount).toLocaleString('km-KH');
+        // (FIX) ត្រូវប្រាកដថា expense.amount គឺជាលេខ
+        const amountValue = typeof expense.amount === 'number' ? expense.amount : parseFloat(expense.amount);
+        const formattedAmount = isNaN(amountValue) ? 'N/A' : amountValue.toLocaleString('km-KH');
 
         return (
           <tr className="border-b border-gray-200 hover:bg-gray-50">
@@ -339,16 +361,162 @@
           </tr>
         );
       }
+      
+      
+      // --- (NEW) Component សម្រាប់ Filter ---
+      function ExpenseFilter({ filterType, setFilterType, filterValue, setFilterValue }) {
+        
+        // យកខែ/ឆ្នាំ បច្ចុប្បន្នសម្រាប់ Default
+        const today = new Date();
+        const currentDay = today.toISOString().split('T')[0];
+        const currentMonth = today.toISOString().slice(0, 7); // "2025-11"
+        const currentYear = today.getFullYear().toString();
 
-      // --- Component សម្រាប់បង្ហាញបញ្ជីចំណាយ ---
-      function ExpenseList({ expenses, deleteExpense, loading }) {
+        // កំណត់ Default ពេល Component បើកដំបូង
+        useEffect(() => {
+          if (!filterValue) {
+            setFilterValue(currentDay);
+          }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, []);
+        
+        const handleTypeChange = (e) => {
+          const newType = e.target.value;
+          setFilterType(newType);
+          // កំណត់ Default Value ពេលប្តូរ Type
+          switch (newType) {
+            case 'daily':
+              setFilterValue(currentDay);
+              break;
+            case 'monthly':
+              setFilterValue(currentMonth);
+              break;
+            case 'yearly':
+              setFilterValue(currentYear);
+              break;
+            case 'all':
+              setFilterValue('all');
+              break;
+            default:
+              setFilterValue(currentDay);
+          }
+        };
+
+        const renderFilterInput = () => {
+          switch (filterType) {
+            case 'daily':
+              return (
+                <input
+                  type="date"
+                  value={filterValue}
+                  onChange={(e) => setFilterValue(e.target.value)}
+                  className="p-2 border border-gray-300 rounded-md shadow-sm w-full"
+                />
+              );
+            case 'monthly':
+              return (
+                <input
+                  type="month"
+                  value={filterValue}
+                  onChange={(e) => setFilterValue(e.target.value)}
+                  className="p-2 border border-gray-300 rounded-md shadow-sm w-full"
+                />
+              );
+            case 'yearly':
+              return (
+                <input
+                  type="number"
+                  value={filterValue}
+                  onChange={(e) => setFilterValue(e.target.value)}
+                  placeholder="YYYY"
+                  min="2000"
+                  max="2100"
+                  step="1"
+                  className="p-2 border border-gray-300 rounded-md shadow-sm w-full"
+                />
+              );
+            case 'all':
+              return <p className="p-2 text-gray-500 w-full text-center sm:text-left">បង្ហាញទិន្នន័យទាំងអស់</p>;
+            default:
+              return null;
+          }
+        };
+
+        return (
+          <div className="p-4 bg-white shadow-md rounded-lg mb-8">
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* ជម្រើសប្រភេទ Filter */}
+              <div className="flex-1">
+                <label htmlFor="filterType" className="block text-sm font-medium text-gray-700 mb-1">
+                  ជ្រើសរើសរបៀបបង្ហាញ
+                </label>
+                <select
+                  id="filterType"
+                  value={filterType}
+                  onChange={handleTypeChange}
+                  className="p-2 border border-gray-300 rounded-md shadow-sm w-full bg-white"
+                >
+                  <option value="daily">ប្រចាំថ្ងៃ</option>
+                  <option value="monthly">ប្រចាំខែ</option>
+                  <option value="yearly">ប្រចាំឆ្នាំ</option>
+                  <option value="all">សរុបទាំងអស់</option>
+                </select>
+              </div>
+              
+              {/* ជម្រើស Value (ថ្ងៃ, ខែ, ឆ្នាំ) */}
+              <div className="flex-1">
+                <label htmlFor="filterValue" className="block text-sm font-medium text-gray-700 mb-1">
+                  ជ្រើសរើស
+                </label>
+                {renderFilterInput()}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+
+      // --- (NEW) Component សម្រាប់បង្ហាញបញ្ជីចំណាយ (បានកែប្រែ) ---
+      function ExpenseList({ expenses, deleteExpense, loading, filterType, filterValue }) {
+        
+        // (NEW) ត្រង (Filter) ទិន្នន័យ
+        const filteredExpenses = useMemo(() => {
+          if (loading || !filterValue) return [];
+          
+          return expenses.filter(expense => {
+            const expenseDate = new Date(expense.date);
+            
+            switch (filterType) {
+              case 'daily':
+                // ត្រូវប្រាកដថា expense.date (e.g., "2025-11-03") គឺដូច filterValue
+                return expense.date === filterValue;
+              
+              case 'monthly':
+                // យក "YYYY-MM" ពី expense.date
+                const expenseMonth = expense.date.slice(0, 7); // "2025-11"
+                return expenseMonth === filterValue;
+              
+              case 'yearly':
+                // យក "YYYY" ពី expense.date
+                const expenseYear = expense.date.slice(0, 4); // "2025"
+                return expenseYear === filterValue;
+              
+              case 'all':
+                return true;
+                
+              default:
+                return false;
+            }
+          });
+        }, [expenses, filterType, filterValue, loading]);
+        
         return (
           <div className="p-6 bg-white shadow-md rounded-lg">
             <h2 className="text-2xl font-semibold mb-4 text-gray-800">បញ្ជីចំណាយ</h2>
             {loading ? (
               <p className="text-center text-gray-500">កំពុងទាញទិន្ន័យ...</p>
-            ) : expenses.length === 0 ? (
-              <p className="text-center text-gray-500">មិនទាន់មានចំណាយនៅឡើយ។</p>
+            ) : filteredExpenses.length === 0 ? (
+              <p className="text-center text-gray-500">មិនមានទិន្នន័យសម្រាប់ជម្រើសនេះទេ។</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[600px] table-auto text-left">
@@ -361,7 +529,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    {expenses.map((expense) => (
+                    {filteredExpenses.map((expense) => (
                       <ExpenseRow
                         key={expense.id}
                         expense={expense}
@@ -376,16 +544,77 @@
         );
       }
 
-      // --- Component សម្រាប់បង្ហាញការសរុបប្រចាំខែ ---
-      function ExpenseSummary({ expenses }) {
-        // គណនាផលបូកសរុប
+      // --- (NEW) Component សម្រាប់បង្ហាញការសរុប (បានកែប្រែ) ---
+      function ExpenseSummary({ expenses, filterType, filterValue, loading }) {
+        
+        // (NEW) ត្រង (Filter) ទិន្នន័យ
+        const filteredExpenses = useMemo(() => {
+          if (loading || !filterValue) return [];
+          
+          return expenses.filter(expense => {
+            const expenseDate = new Date(expense.date);
+            
+            switch (filterType) {
+              case 'daily':
+                return expense.date === filterValue;
+              case 'monthly':
+                const expenseMonth = expense.date.slice(0, 7); // "2025-11"
+                return expenseMonth === filterValue;
+              case 'yearly':
+                const expenseYear = expense.date.slice(0, 4); // "2025"
+                return expenseYear === filterValue;
+              case 'all':
+                return true;
+              default:
+                return false;
+            }
+          });
+        }, [expenses, filterType, filterValue, loading]);
+
+        // គណនាផលបូកសរុប (ពីទិន្នន័យដែលបាន Filter)
         const totalExpense = useMemo(() => {
-          return expenses.reduce((total, expense) => total + expense.amount, 0);
-        }, [expenses]);
+          // (FIX) ត្រូវប្រាកដថាបូកជាលេខ
+          return filteredExpenses.reduce((total, expense) => {
+             const amountValue = typeof expense.amount === 'number' ? expense.amount : parseFloat(expense.amount);
+             return total + (isNaN(amountValue) ? 0 : amountValue);
+          }, 0);
+        }, [filteredExpenses]);
+        
+        // (NEW) បង្កើតចំណងជើង
+        const summaryTitle = useMemo(() => {
+          if (!filterValue) return "សរុបចំណាយ";
+          
+          try {
+            switch (filterType) {
+              case 'daily':
+                const date = new Date(filterValue);
+                const formattedDate = date.toLocaleDateString('km-KH', { 
+                  year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' 
+                });
+                return `សរុបចំណាយថ្ងៃទី ${formattedDate}`;
+              case 'monthly':
+                const [year, month] = filterValue.split('-');
+                const monthDate = new Date(year, month - 1);
+                const formattedMonth = monthDate.toLocaleDateString('km-KH', { 
+                  year: 'numeric', month: 'long', timeZone: 'UTC' 
+                });
+                return `សរុបចំណាយខែ ${formattedMonth}`;
+              case 'yearly':
+                return `សរុបចំណាយឆ្នាំ ${filterValue}`;
+              case 'all':
+                return "សរុបចំណាយទាំងអស់";
+              default:
+                return "សរុបចំណាយ";
+            }
+          } catch (e) {
+            console.error("Date formatting error:", e);
+            return "សរុបចំណាយ";
+          }
+        }, [filterType, filterValue]);
 
         return (
           <div className="p-6 bg-white shadow-md rounded-lg mb-8">
-            <h2 className="text-2xl font-semibold text-gray-800">សរុបចំណាយទាំងអស់ (៛)</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">{summaryTitle}</h2>
             <p className="text-4xl font-bold text-red-700 mt-2">
               {totalExpense.toLocaleString('km-KH')} ៛
             </p>
@@ -483,6 +712,10 @@
         const [loading, setLoading] = useState(true); // សម្រាប់ពេលកំពុងទាញទិន្នន័យ
         const [submitLoading, setSubmitLoading] = useState(false); // សម្រាប់ពេលកំពុង Submit
         const [currentPage, setCurrentPage] = useState('dashboard'); // State សម្រាប់ Page
+        
+        // (NEW) States សម្រាប់ Filter
+        const [filterType, setFilterType] = useState('daily');
+        const [filterValue, setFilterValue] = useState(new Date().toISOString().split('T')[0]); // Default ថ្ងៃនេះ
 
         // 1. ដំណើរការ Authentication (សម្រាប់បង្ហាញ User ID)
         useEffect(() => {
@@ -569,8 +802,8 @@
                   expensesData.push({ id: key, ...data[key] });
                 }
               }
-              // Sort
-              expensesData.sort((a, b) => new Date(b.date) - new Date(a.date));
+              // (FIX) Sort មិនចាំបាច់នៅទីនេះទេ ព្រោះ data ទាំងអស់នឹងត្រូវ Filter  anyway
+              // expensesData.sort((a, b) => new Date(b.date) - new Date(a.date));
               setExpenses(expensesData);
               setLoading(false); // ដាក់ Loading false បន្ទាប់ពីទាញ Expenses រួច
             },
@@ -678,12 +911,29 @@
                 
                 {currentPage === 'dashboard' && (
                   <>
-                    {/* ទំព័រដើម (Dashboard) */}
-                    <ExpenseSummary expenses={expenses} />
+                    {/* (NEW) បន្ថែម Filter */}
+                    <ExpenseFilter 
+                      filterType={filterType}
+                      setFilterType={setFilterType}
+                      filterValue={filterValue}
+                      setFilterValue={setFilterValue}
+                    />
+                  
+                    {/* (NEW) បន្ថែម Filter Props ទៅ Summary */}
+                    <ExpenseSummary 
+                      expenses={expenses} 
+                      loading={loading}
+                      filterType={filterType}
+                      filterValue={filterValue}
+                    />
+                    
+                    {/* (NEW) បន្ថែម Filter Props ទៅ List */}
                     <ExpenseList 
                       expenses={expenses} 
                       deleteExpense={deleteExpense} 
-                      loading={loading} 
+                      loading={loading}
+                      filterType={filterType}
+                      filterValue={filterValue}
                     />
                   </>
                 )}
