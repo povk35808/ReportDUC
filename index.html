@@ -268,12 +268,40 @@
 
         const handleSubmitAll = async () => {
           setLoading(true);
+
+          // (NEW) Get a fresh set of expenses recorded for the *current* date (today)
+          const today = new Date().toISOString().split('T')[0];
+          const recordedForToday = new Set(
+            expenses
+              .filter(ex => ex.date === today)
+              .map(ex => ex.expenseName)
+          );
+
           const validRows = rows.filter(row => row.expenseName && row.amount > 0 && row.date);
+          const rowsToSave = [];
+          const rowsToBlock = [];
+
+          validRows.forEach(row => {
+            // (NEW) Check if the row is for *today* AND is *already recorded* today
+            // Note: This check applies even if the item was added to `expenses` *after* the component loaded
+            if (row.date === today && recordedForToday.has(row.expenseName)) {
+              rowsToBlock.push(row);
+            } else {
+              rowsToSave.push(row);
+            }
+          });
+
+          if (rowsToBlock.length > 0) {
+            console.warn("Skipping rows that are already recorded for today:", rowsToBlock);
+            // In a real app, we would show a toast/message to the user here.
+            // For now, we just skip saving them.
+          }
           
           // ប្រើ Promise.all ដើម្បីឲ្យវាដំណើរការព្រមគ្នា
           try {
+            // (FIX) Only save rows that are not blocked
             await Promise.all(
-              validRows.map(row => {
+              rowsToSave.map(row => {
                 const { id, ...expenseData } = row; // មិនរក្សាទុក ID បណ្តោះអាសន្ន
                 // `expenseData.amount` គឺជាលេខសុទ្ធ (e.g., "1000000")
                 return addExpense({
@@ -282,9 +310,18 @@
                 });
               })
             );
-            console.log(`Successfully added ${validRows.length} expenses.`);
-            // (FIX) កូដនេះនឹង clear localStorage ដោយស្វ័យប្រវត្តិ ព្រោះ useEffect [rows] នឹងដំណើរការ
-            setRows([createNewRow()]); // Reset តារាង
+            
+            console.log(`Successfully added ${rowsToSave.length} expenses.`);
+            
+            // (FIX) Reset the table, but *keep* the blocked rows for the user to see/fix
+            const remainingDrafts = rows.filter(row => rowsToBlock.find(blocked => blocked.id === row.id));
+            
+            if (remainingDrafts.length > 0) {
+              setRows(remainingDrafts); // Keep the blocked rows in the draft
+            } else {
+              setRows([createNewRow()]); // Reset to a new row
+            }
+            
           } catch (error) {
             console.error("Error saving expenses: ", error);
           }
@@ -330,7 +367,8 @@
                           {expenseTemplates.length === 0 && <option value="" disabled>សូមបន្ថែមឈ្មោះចំណាយ...</option>}
                           {expenseTemplates.map((template) => {
                             // (NEW) ពិនិត្យមើលថាបានកត់ត្រាថ្ងៃនេះឬនៅ
-                            const isRecorded = recordedToday.has(template.name);
+                            // (FIX) ពិនិត្យមើល `row.date` មិនមែន `defaultDate`
+                            const isRecorded = row.date === defaultDate && recordedToday.has(template.name);
                             return (
                               <option 
                                 key={template.id} 
