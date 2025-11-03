@@ -164,12 +164,29 @@
       }
 
 
-      // --- Component សម្រាប់បង្ហាញតារាង "បញ្ចូល" ទិន្នន័យ (Batch Input Table) ---
-      function BatchExpenseForm({ addExpense, expenseTemplates, loading, setLoading }) {
+      // --- (FIX) Component សម្រាប់បង្ហាញតារាង "បញ្ចូល" ទិន្នន័យ (Batch Input Table) ---
+      function BatchExpenseForm({ addExpense, expenseTemplates, loading, setLoading, expenses }) {
         const defaultDate = new Date().toISOString().split('T')[0];
+        
+        // (NEW) ស្វែងរកទិន្នន័យដែលបានកត់ត្រាថ្ងៃនេះ
+        const recordedToday = useMemo(() => {
+          if (!expenses) return new Set();
+          return new Set(
+            expenses
+              .filter(ex => ex.date === defaultDate)
+              .map(ex => ex.expenseName)
+          );
+        }, [expenses, defaultDate]);
+        
+        // (NEW) ស្វែងរកឈ្មោះ Default (ឈ្មោះដំបូងដែលមិនទាន់បានកត់ត្រា)
+        const defaultName = useMemo(() => {
+          const firstUnrecorded = expenseTemplates.find(t => !recordedToday.has(t.name));
+          return firstUnrecorded?.name || (expenseTemplates.length > 0 ? expenseTemplates[0].name : '');
+        }, [expenseTemplates, recordedToday]);
+
         const createNewRow = () => ({
           id: crypto.randomUUID(), // ID សម្រាប់ React state
-          expenseName: expenseTemplates.length > 0 ? expenseTemplates[0].name : '',
+          expenseName: defaultName, // (FIX) ប្រើ Smart Default
           amount: '',
           date: defaultDate,
         });
@@ -188,8 +205,13 @@
           } catch (e) {
             console.error("Failed to load drafts from localStorage:", e);
           }
-          // បើមិនមាន, ចាប់ផ្តើមជាមួយជួរថ្មីមួយ
-          return [createNewRow()];
+          // (FIX) ចាប់ផ្តើមជាមួយជួរទទេ (useEffect នឹងបំពេញឈ្មោះ default)
+          return [{
+            id: crypto.randomUUID(),
+            expenseName: '', // ចាប់ផ្តើមទទេ
+            amount: '',
+            date: defaultDate,
+          }];
         });
 
         // (NEW) បន្ថែម useEffect នេះ ដើម្បីរក្សាទុក 'rows' ទៅ localStorage រាល់ពេលវាផ្លាស់ប្តូរ
@@ -201,19 +223,19 @@
           }
         }, [rows, DRAFT_KEY]); // Dependency array
 
-        // Update default expenseName in rows when templates load
+        // (FIX) Update default expenseName ពេល templates ផ្ទុក ឬ defaultName ផ្លាស់ប្តូរ
         useEffect(() => {
-          if (expenseTemplates.length > 0) {
+          if (expenseTemplates.length > 0 && defaultName) {
             setRows(prevRows => 
               prevRows.map(row => ({
                 ...row,
-                // (FIX) រក្សា expenseName ដែលមានស្រាប់, បើមិនមានទេ ប្រើ default
-                expenseName: row.expenseName || expenseTemplates[0].name
+                // (MODIFIED) បើឈ្មោះទទេ, ប្រើ smart default
+                expenseName: row.expenseName || defaultName
               }))
             );
           }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [expenseTemplates]); // មិនបាច់បន្ថែម createNewRow ទេ
+        // (MODIFIED) អាស្រ័យលើ defaultName
+        }, [expenseTemplates, defaultName]);
 
         const handleUpdateRow = (id, field, value) => {
           setRows(prevRows =>
@@ -306,11 +328,20 @@
                           className="w-full mt-1 sm:mt-0 p-2 border border-gray-300 rounded-md shadow-sm bg-white"
                         >
                           {expenseTemplates.length === 0 && <option value="" disabled>សូមបន្ថែមឈ្មោះចំណាយ...</option>}
-                          {expenseTemplates.map((template) => (
-                            <option key={template.id} value={template.name}>
-                              {template.name}
-                            </option>
-                          ))}
+                          {expenseTemplates.map((template) => {
+                            // (NEW) ពិនិត្យមើលថាបានកត់ត្រាថ្ងៃនេះឬនៅ
+                            const isRecorded = recordedToday.has(template.name);
+                            return (
+                              <option 
+                                key={template.id} 
+                                value={template.name}
+                                disabled={isRecorded} // (NEW) Disable បើបានកត់ត្រា
+                                className={isRecorded ? 'text-gray-400' : ''} // (NEW) ដាក់ពណ៌ប្រផេះ
+                              >
+                                {template.name} {isRecorded ? '(កត់ត្រារួចហើយ)' : ''} {/* (NEW) បន្ថែម Label */}
+                              </option>
+                            );
+                          })}
                         </select>
                       </div>
                       
@@ -498,7 +529,7 @@
       }
 
       // --- (NEW) Component សម្រាប់កែសម្រួលទិន្នន័យ (Desktop: Table Row) ---
-      function EditableExpenseRow({ expense, deleteExpense, updateExpense, expenseTemplates }) {
+      function EditableExpenseRow({ expense, requestDeleteExpense, updateExpense, expenseTemplates }) { // (FIX) ប្តូរ prop
         const [isEditing, setIsEditing] = useState(false);
         const [editData, setEditData] = useState({ ...expense });
 
@@ -600,7 +631,7 @@
                   កែសម្រួល
                 </button>
                 <button
-                  onClick={() => deleteExpense(expense.id)}
+                  onClick={() => requestDeleteExpense(expense.id)} // (FIX) ប្តូរ Function
                   className="px-3 py-1 bg-red-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-600 transition-transform duration-200 hover:scale-105 active:scale-95"
                 >
                   លុប
@@ -612,7 +643,7 @@
       }
       
       // --- (NEW) Component សម្រាប់កែសម្រួលទិន្នន័យ (Mobile: Card) ---
-      function EditableExpenseCard({ expense, deleteExpense, updateExpense, expenseTemplates }) {
+      function EditableExpenseCard({ expense, requestDeleteExpense, updateExpense, expenseTemplates }) { // (FIX) ប្តូរ prop
         const [isEditing, setIsEditing] = useState(false);
         const [editData, setEditData] = useState({ ...expense });
 
@@ -718,7 +749,7 @@
                     កែសម្រួល
                   </button>
                   <button
-                    onClick={() => deleteExpense(expense.id)}
+                    onClick={() => requestDeleteExpense(expense.id)} // (FIX) ប្តូរ Function
                     className="px-3 py-1 bg-red-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-600 transition-transform duration-200 hover:scale-105 active:scale-95"
                   >
                     លុប
@@ -771,7 +802,7 @@
 
 
       // --- (FIX) Component សម្រាប់បង្ហាញបញ្ជីចំណាយ (បានកែប្រែ) ---
-      function ExpenseList({ expenses, deleteExpense, updateExpense, expenseTemplates, loading, filterType, filterValue }) {
+      function ExpenseList({ expenses, requestDeleteExpense, updateExpense, expenseTemplates, loading, filterType, filterValue }) { // (FIX) ប្តូរ prop
         
         // (NEW) Pagination state
         const [listPage, setListPage] = useState(1);
@@ -888,7 +919,7 @@
                         <EditableExpenseRow
                           key={expense.id}
                           expense={expense}
-                          deleteExpense={deleteExpense}
+                          requestDeleteExpense={requestDeleteExpense} // (FIX) ប្តូរ prop
                           updateExpense={updateExpense}
                           expenseTemplates={expenseTemplates}
                         />
@@ -908,7 +939,7 @@
                     <EditableExpenseCard
                       key={expense.id}
                       expense={expense}
-                      deleteExpense={deleteExpense}
+                      requestDeleteExpense={requestDeleteExpense} // (FIX) ប្តូរ prop
                       updateExpense={updateExpense}
                       expenseTemplates={expenseTemplates}
                     />
@@ -1089,6 +1120,32 @@
         );
       }
 
+      // (NEW) Component សម្រាប់ Modal បញ្ជាក់ការលុប
+      function ConfirmationModal({ message, onConfirm, onCancel }) {
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+            <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full page-fade-in">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">បញ្ជាក់</h3>
+              <p className="text-gray-600 mb-6">{message}</p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={onCancel}
+                  className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md shadow-sm hover:bg-gray-400 transition-all active:scale-95"
+                >
+                  បោះបង់
+                </button>
+                <button
+                  onClick={onConfirm}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md shadow-sm hover:bg-red-700 transition-all active:scale-95"
+                >
+                  បញ្ជាក់លុប
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
 
       // --- Main App Component ---
       // (FIX) Đã xóa 'export default'
@@ -1106,6 +1163,8 @@
         const [filterValue, setFilterValue] = useState(new Date().toISOString().split('T')[0]); // Default ថ្ងៃនេះ
         // (NEW) State សម្រាប់លាក់/បង្ហាញ Filter នៅលើទំព័រ 'list' (Mobile)
         const [isListFilterVisible, setIsListFilterVisible] = useState(false);
+        // (NEW) State សម្រាប់ Modal លុប
+        const [expenseToDelete, setExpenseToDelete] = useState(null);
 
         // 1. ដំណើរការ Authentication (សម្រាប់បង្ហាញ User ID)
         useEffect(() => {
@@ -1261,6 +1320,20 @@
           }
         };
         
+        // --- (NEW) Handlers សម្រាប់ Modal លុប ---
+        const requestDeleteExpense = (id) => {
+          setExpenseToDelete(id);
+        };
+        const confirmDeleteExpense = () => {
+          if (expenseToDelete) {
+            deleteExpense(expenseToDelete);
+          }
+          setExpenseToDelete(null);
+        };
+        const cancelDeleteExpense = () => {
+          setExpenseToDelete(null);
+        };
+        
         // --- Function សម្រាប់បន្ថែមឈ្មោះចំណាយ (រក្សាទុកក្នុង RTDB - Public) ---
         const addExpenseTemplate = async (name) => {
           if (!rtdb || !name.trim()) return;
@@ -1372,7 +1445,7 @@
                     
                       <ExpenseList 
                         expenses={expenses} 
-                        deleteExpense={deleteExpense} 
+                        requestDeleteExpense={requestDeleteExpense} // (FIX) ប្តូរ prop
                         updateExpense={updateExpense}
                         expenseTemplates={expenseTemplates}
                         loading={loading}
@@ -1390,6 +1463,7 @@
                         expenseTemplates={expenseTemplates}
                         loading={submitLoading}
                         setLoading={setSubmitLoading}
+                        expenses={expenses} // (NEW) បញ្ជូន expenses ទៅ
                       />
                     </>
                   )}
@@ -1410,6 +1484,15 @@
 
               {/* (NEW) Mobile Navigation Bar */}
               <MobileNavbar currentPage={currentPage} setCurrentPage={setCurrentPage} />
+              
+              {/* (NEW) Render Confirmation Modal */}
+              {expenseToDelete && (
+                <ConfirmationModal 
+                  message="តើអ្នកពិតជាចង់លុបចំណាយនេះមែនទេ?"
+                  onConfirm={confirmDeleteExpense}
+                  onCancel={cancelDeleteExpense}
+                />
+              )}
             </div>
           </div>
         );
