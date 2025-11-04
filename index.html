@@ -29,7 +29,7 @@
     body {
       font-family: 'Inter', 'Kantumruy Pro', sans-serif;
     }
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Kantumruy+Pro:ital,wght@0,100..700;1,100..700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Kantumruy+Pro:ital,wght@0,100..700;1,100..700&display=swap');
     
     /* (NEW) Animation for page fade-in */
     @keyframes fadeIn {
@@ -125,7 +125,7 @@
 
         return (
           // (FIX) UI ថ្មី
-          <div className="mb-8 p-6 bg-white shadow-lg sm:shadow-md rounded-xl border border-gray-200/50 transition-all duration-300 ease-in-out sm:hover:shadow-lg">
+          <div className="mb-8 p-6 bg-white shadow-lg sm:shadow-md rounded-2xl border border-gray-200/50 transition-all duration-300 ease-in-out sm:hover:shadow-lg">
             <h2 className="text-2xl font-semibold mb-4 text-gray-800">គ្រប់គ្រងឈ្មោះចំណាយ (Headers)</h2>
             <form onSubmit={handleAddTemplate} className="flex flex-col sm:flex-row gap-2 mb-4">
               <input
@@ -331,7 +331,7 @@
 
         return (
           // (FIX) UI ថ្មី
-          <div className="mb-8 p-4 sm:p-6 bg-white shadow-lg sm:shadow-md rounded-xl border border-gray-200/50 transition-all duration-300 ease-in-out sm:hover:shadow-lg">
+          <div className="mb-8 p-4 sm:p-6 bg-white shadow-lg sm:shadow-md rounded-2xl border border-gray-200/50 transition-all duration-300 ease-in-out sm:hover:shadow-lg">
             <h2 className="text-2xl font-semibold mb-4 text-gray-800">តារាងបញ្ចូលចំណាយថ្មី</h2>
             
             {/* (FIX) បានប្តូរពី Table ទៅជា List សម្រាប់ Mobile */}
@@ -353,7 +353,7 @@
                 <div className="sm:table-row-group">
                   {rows.map(row => (
                     // (FIX) UI ថ្មី
-                    <div key={row.id} className="block sm:table-row border shadow-md sm:shadow-none rounded-xl sm:rounded-none overflow-hidden mb-2 sm:mb-0 sm:border-b">
+                    <div key={row.id} className="block sm:table-row border shadow-md sm:shadow-none rounded-2xl sm:rounded-none overflow-hidden mb-2 sm:mb-0 sm:border-b">
                       
                       {/* ឈ្មោះចំណាយ (Dropdown) */}
                       {/* (FIX) UI ថ្មី */}
@@ -454,7 +454,7 @@
       }
       
       
-      // --- Component សម្រាប់ Filter ---
+      // --- (FIX) Component សម្រាប់ Filter ---
       function ExpenseFilter({ filterType, setFilterType, filterValue, setFilterValue }) {
         
         // យកខែ/ឆ្នាំ បច្ចុប្បន្នសម្រាប់ Default
@@ -501,7 +501,7 @@
                   type="date"
                   value={filterValue}
                   onChange={(e) => setFilterValue(e.target.value)}
-                  className="p-2 border border-gray-300 rounded-lg shadow-sm w-full"
+                  className="p-3 border border-gray-300 rounded-lg shadow-sm w-full"
                 />
               );
             case 'monthly':
@@ -510,7 +510,7 @@
                   type="month"
                   value={filterValue}
                   onChange={(e) => setFilterValue(e.target.value)}
-                  className="p-2 border border-gray-300 rounded-lg shadow-sm w-full"
+                  className="p-3 border border-gray-300 rounded-lg shadow-sm w-full"
                 />
               );
             case 'yearly':
@@ -523,30 +523,30 @@
                   min="2000"
                   max="2100"
                   step="1"
-                  className="p-2 border border-gray-300 rounded-lg shadow-sm w-full"
+                  className="p-3 border border-gray-300 rounded-lg shadow-sm w-full"
                 />
               );
             case 'all':
-              return <p className="p-2 text-gray-500 w-full text-center sm:text-left">បង្ហាញទិន្នន័យទាំងអស់</p>;
+              return <p className="p-3 text-gray-500 w-full text-center sm:text-left">បង្ហាញទិន្នន័យទាំងអស់</p>;
             default:
               return null;
           }
         };
 
         return (
-          // (FIX) UI ថ្មី
-          <div className="p-4 bg-white shadow-lg sm:shadow-md rounded-xl border border-gray-200/50 mb-8 transition-all duration-300 ease-in-out sm:hover:shadow-lg">
+          // (FIX) UI ថ្មី - Premium
+          <div className="p-5 bg-gradient-to-b from-blue-50 to-white shadow-lg sm:shadow-md rounded-2xl border border-gray-200/50 mb-8 transition-all duration-300 ease-in-out sm:hover:shadow-lg">
             <div className="flex flex-col sm:flex-row gap-4">
               {/* ជម្រើសប្រភេទ Filter */}
               <div className="flex-1">
-                <label htmlFor="filterType" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="filterType" className="block text-sm font-semibold text-gray-700 mb-2">
                   ជ្រើសរើសរបៀបបង្ហាញ
                 </label>
                 <select
                   id="filterType"
                   value={filterType}
                   onChange={handleTypeChange}
-                  className="p-2 border border-gray-300 rounded-lg shadow-sm w-full bg-white"
+                  className="p-3 border border-gray-300 rounded-lg shadow-sm w-full bg-white"
                 >
                   <option value="daily">ប្រចាំថ្ងៃ</option>
                   <option value="monthly">ប្រចាំខែ</option>
@@ -557,7 +557,7 @@
               
               {/* ជម្រើស Value (ថ្ងៃ, ខែ, ឆ្នាំ) */}
               <div className="flex-1">
-                <label htmlFor="filterValue" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="filterValue" className="block text-sm font-semibold text-gray-700 mb-2">
                   ជ្រើសរើស
                 </label>
                 {renderFilterInput()}
@@ -718,7 +718,7 @@
 
         return (
           // (FIX) UI ថ្មី
-          <div className={`p-4 bg-white shadow-lg rounded-xl mb-3 border border-gray-200/50 transition-all duration-300 ease-in-out ${isEditing ? 'border-2 border-blue-500' : ''}`}>
+          <div className={`p-4 bg-white shadow-lg rounded-2xl mb-3 border border-gray-200/50 transition-all duration-300 ease-in-out ${isEditing ? 'border-2 border-blue-500' : ''}`}>
             {isEditing ? (
               // -- ទម្រង់ Edit (Card) --
               <div className="space-y-3">
@@ -936,7 +936,7 @@
         
         return (
           // (FIX) UI ថ្មី
-          <div className="p-0 sm:p-6 sm:bg-white sm:shadow-md sm:rounded-xl sm:border sm:border-gray-200/50 transition-all duration-300 sm:hover:shadow-lg">
+          <div className="p-0 sm:p-6 sm:bg-white sm:shadow-md sm:rounded-2xl sm:border sm:border-gray-200/50 transition-all duration-300 sm:hover:shadow-lg">
             <h2 className="text-2xl font-semibold mb-4 text-gray-800 p-6 sm:p-0">បញ្ជីចំណាយ</h2>
             {loading ? (
               <p className="text-center text-gray-500">កំពុងទាញទិន្ន័យ...</p>
@@ -1000,7 +1000,7 @@
         );
       }
 
-      // --- Component សម្រាប់បង្ហាញការសរុប (បានកែប្រែ) ---
+      // --- (FIX) Component សម្រាប់បង្ហាញការសរុប (បានកែប្រែ) ---
       function ExpenseSummary({ expenses, filterType, filterValue, loading }) {
         
         // (NEW) ត្រង (Filter) ទិន្នន័យ
@@ -1069,11 +1069,11 @@
         }, [filterType, filterValue]);
 
         return (
-          // (FIX) UI ថ្មី
-          <div className="p-6 bg-white shadow-lg sm:shadow-md rounded-xl border border-gray-200/50 mb-8 transition-all duration-300 ease-in-out sm:hover:shadow-lg">
-            <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">{summaryTitle}</h2>
-            {/* (FIX) UI ថ្មី: Gradient text */}
-            <p className="text-4xl font-bold mt-2 bg-clip-text text-transparent bg-gradient-to-r from-red-600 to-rose-700">
+          // (FIX) UI ថ្មី - Premium
+          <div className="p-6 bg-gradient-to-br from-blue-600 to-indigo-700 shadow-xl shadow-blue-500/30 rounded-2xl mb-8 transition-all duration-300 ease-in-out sm:hover:shadow-2xl">
+            <h2 className="text-lg font-medium text-blue-100">{summaryTitle}</h2>
+            {/* (FIX) UI ថ្មី: Premium Text */}
+            <p className="text-5xl font-extrabold text-white mt-2">
               {totalExpense.toLocaleString('km-KH')} ៛
             </p>
           </div>
@@ -1142,7 +1142,7 @@
         ];
         
         const getButtonClass = (pageId) => {
-          const baseClass = "flex flex-col items-center justify-center flex-1 py-2 transition-all duration-300 ease-in-out focus:outline-none transform active:scale-90";
+          const baseClass = "flex flex-col items-center justify-center flex-1 py-2 transition-all duration-300 ease-in-out focus:outline-none transform active:scale-95"; // (FIX) UI ថ្មី
           if (pageId === currentPage) {
             return `${baseClass} text-blue-700 scale-110`; // Active
           }
@@ -1150,8 +1150,8 @@
         };
 
         return (
-          // (FIX) UI ថ្មី
-          <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.05)] border-t border-gray-200 flex justify-around">
+          // (FIX) UI ថ្មី - Premium Shadow
+          <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-white shadow-[0_-5px_15px_rgba(0,0,0,0.08)] border-t border-gray-200/50 flex justify-around">
             {navItems.map(item => (
               <button
                 key={item.id}
@@ -1171,7 +1171,7 @@
         return (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
             {/* (FIX) UI ថ្មី */}
-            <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full page-fade-in">
+            <div className="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full page-fade-in">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">បញ្ជាក់</h3>
               <p className="text-gray-600 mb-6">{message}</p>
               <div className="flex justify-end gap-3">
@@ -1416,7 +1416,8 @@
 
         return (
           // (FIX) បន្ថែម pb-24 (padding-bottom: 6rem) ដើម្បីកុំឱ្យ MobileNavbar គ្របលើមាតិកា
-          <div className="min-h-screen bg-gray-100 p-4 sm:p-8 pb-24 sm:pb-8">
+          // (FIX) UI ថ្មី: p-5
+          <div className="min-h-screen bg-gray-100 p-5 sm:p-8 pb-24 sm:pb-8">
             <div className="max-w-6xl mx-auto">
               <header className="mb-8 text-center">
                 {/* (FIX) UI ថ្មី */}
@@ -1465,7 +1466,7 @@
                           className="w-full p-3 bg-white text-blue-600 font-semibold rounded-lg shadow-md flex items-center justify-center gap-2 transition-all duration-300 active:scale-95 hover:bg-gray-50"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V19l-4 2v-5.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6-6.414a1 1 0 00-.293.707V19l-4 2v-5.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                           </svg>
                           {isListFilterVisible ? 'លាក់ប្រអប់ស្វែងរក' : 'បង្ហាញប្រអប់ស្វែងរក'}
                         </button>
